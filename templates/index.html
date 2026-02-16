@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>银航宝 · 深蓝启航</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="ocean-bg" aria-hidden="true"></div>
+
+    <canvas id="gridCanvas" aria-hidden="true"></canvas>
+
+    <div class="wireframe-layer" aria-hidden="true">
+        <svg class="wireframe-svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+            <g class="wireframe-shape ship">
+                <path d="M160 640 L720 640 L820 610 L1110 610 L1180 645 L1160 680 L220 680 Z" />
+                <path d="M430 610 L620 610 L650 575 L760 575 L790 610" />
+                <path d="M565 575 L565 500 L625 500 L625 575" />
+            </g>
+            <g class="wireframe-shape crane">
+                <path d="M1030 610 L1030 480 L1110 420 L1130 450 L1060 500 L1060 610" />
+                <path d="M1110 420 L1230 420" />
+                <path d="M1210 420 L1210 520" />
+            </g>
+            <g class="wireframe-shape turbine">
+                <path d="M290 610 L320 470" />
+                <path d="M320 470 L270 420" />
+                <path d="M320 470 L390 440" />
+                <path d="M320 470 L345 540" />
+            </g>
+        </svg>
+    </div>
+
+    <div class="sonar-center" aria-hidden="true"></div>
+    <div class="sonar-wave wave-1" aria-hidden="true"></div>
+    <div class="sonar-wave wave-2" aria-hidden="true"></div>
+    <div class="sonar-wave wave-3" aria-hidden="true"></div>
+
+    <canvas id="meteorCanvas" aria-hidden="true"></canvas>
+
+    <main class="hero" id="hero" aria-live="polite">
+        <h1 class="brand-title" id="brandTitle" data-text="银航宝">银航宝</h1>
+        <p class="hint" id="hintMessage">鼠标点击任意位置以登录/注册</p>
+    </main>
+
+    <section class="auth-container" id="authContainer" aria-label="登录注册">
+        <div class="auth-card tidal-shell">
+            <article class="tidal-cabin cabin-left">
+                <div class="tidal-panel panel-prompt left-prompt active" id="leftPrompt">
+                    <h2>欢迎回来👏老朋友</h2>
+                    <p>有账号了吗？右侧登录哦♥️</p>
+                    <p class="mini-copy">左舷待命，准备切换注册航道。</p>
+                    <button type="button" class="switch-btn" id="leftSwitchToRegister">没有账号？点击注册</button>
+                </div>
+
+                <div class="tidal-panel panel-form left-register-wrap" id="leftRegisterWrap">
+                    <div class="ready-banner">We are ready!</div>
+                    <form id="registerForm" class="tidal-form" autocomplete="on">
+                        <input type="text" name="username" placeholder="新账号" required>
+                        <input type="password" name="password" placeholder="设置密码" required>
+                        <input type="password" name="confirm" placeholder="确认密码" required>
+                        <button type="submit">立即注册</button>
+                    </form>
+                </div>
+            </article>
+
+            <article class="tidal-cabin cabin-right">
+                <div class="tidal-panel panel-form right-login-wrap active" id="rightLoginWrap">
+                    <div class="ready-banner">We are ready!</div>
+                    <form id="loginForm" class="tidal-form" autocomplete="on">
+                        <input type="text" name="username" placeholder="账号" required>
+                        <input type="password" name="password" placeholder="密码" required>
+                        <button type="submit">进入银航宝</button>
+                        <div class="links">
+                            <a href="#">忘记密码</a>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="tidal-panel panel-prompt right-prompt" id="rightPrompt">
+                    <h2>你好👋新朋友！</h2>
+                    <p>没有账号吗？左侧注册哦♥️</p>
+                    <p class="mini-copy">右舷领航，欢迎加入深蓝航程。</p>
+                    <button type="button" class="switch-btn" id="rightSwitchToLogin">已有账号？点击登录</button>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
