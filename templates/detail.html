@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银航宝 · 风险明细</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+</head>
+<body class="dashboard-body detail-page">
+    <div class="skyline" aria-hidden="true"></div>
+    <div class="grid-glow" aria-hidden="true"></div>
+
+    <header class="top-bar detail-bar">
+        <div class="top-left">
+            <button class="back-btn" id="backBtn" data-tip="返回总览大屏">返回大屏</button>
+        </div>
+        <div class="top-center">
+            <h1>风险明细视图</h1>
+            <p id="detailTitle">钻取详情</p>
+        </div>
+        <div class="top-right">
+            <div class="clock" id="cnClock">--</div>
+            <div class="meta">
+                <span class="tag">币种：CNY</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="detail-content">
+        <section class="card">
+            <header>
+                <h2>明细内容</h2>
+                <span class="sub">该页面用于后续扩展数据列表与钻取分析</span>
+            </header>
+            <div class="empty-block">暂无明细数据，敬请期待。</div>
+        </section>
+    </main>
+
+    <script src="/static/js/dashboard/state.js"></script>
+    <script src="/static/js/dashboard/utils.js"></script>
+    <script src="/static/js/dashboard/calendar.js"></script>
+    <script src="/static/js/dashboard/app.js"></script>
+</body>
+</html>

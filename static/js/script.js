@@ -25,6 +25,13 @@ const state = {
     nextFireworkAt: 0,
 };
 
+function ensureLoggedInRedirect() {
+    const token = localStorage.getItem("silvernav_token");
+    if (token) {
+        document.body.classList.add("dashboard-open");
+    }
+}
+
 const CONFIG = {
     meteorCountDesktop: 45,
     meteorCountMobile: 20,
@@ -1284,6 +1291,10 @@ async function submitForm(form, endpoint) {
         const data = await res.json();
         const ok = Boolean(data.success);
         showToast(data.msg || (ok ? "操作成功" : "操作失败"), !ok);
+        if (ok && data.token) {
+            localStorage.setItem("silvernav_token", data.token);
+            window.location.href = "/dashboard";
+        }
     } catch (err) {
         showToast("网络异常，请稍后重试", true);
     }
@@ -1309,12 +1320,30 @@ function bindForms() {
             return;
         }
 
+        if (pwd.length < 10) {
+            showToast("密码长度至少10位", true);
+            return;
+        }
+        if (!/[A-Za-z]/.test(pwd)) {
+            showToast("密码必须包含字母", true);
+            return;
+        }
+        if (!/\d/.test(pwd)) {
+            showToast("密码必须包含数字", true);
+            return;
+        }
+        if (!/[^A-Za-z0-9]/.test(pwd)) {
+            showToast("密码必须包含符号", true);
+            return;
+        }
+
         await submitForm(registerForm, "/api/register");
     });
 }
 
 function boot() {
     initCanvases();
+    ensureLoggedInRedirect();
     bindSceneTrigger();
     bindTidalSwitch();
     bindForms();

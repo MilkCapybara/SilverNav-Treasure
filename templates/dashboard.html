@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银航宝 · 风险敞口仪表盘</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+</head>
+<body class="dashboard-body">
+    <div class="skyline" aria-hidden="true"></div>
+    <div class="grid-glow" aria-hidden="true"></div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <div class="date-group" id="dateGroup">
+                <button class="date-toggle" id="dateToggle" type="button">
+                    <span class="date-icon" aria-hidden="true"></span>
+                    <span class="date-label">数据基准日</span>
+                    <span class="date-value" id="dateValue">--</span>
+                    <span class="date-chevron" aria-hidden="true"></span>
+                </button>
+                <div class="date-panel" id="datePanel" aria-hidden="true">
+                    <div class="date-panel-header">
+                        <button class="nav-btn" id="prevMonth" type="button" aria-label="上一月">◀</button>
+                        <div class="month-label" id="monthLabel">--</div>
+                        <button class="nav-btn" id="nextMonth" type="button" aria-label="下一月">▶</button>
+                    </div>
+                    <div class="week-row">
+                        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                    </div>
+                    <div class="date-grid" id="dateGrid"></div>
+                </div>
+                <div class="date-hint">基于该日期计算今日/本月/近7天等时间区间</div>
+            </div>
+            <div class="range-group" role="tablist" aria-label="时间维度">
+                <button class="range-btn active" data-range="today" data-tip="仅统计基准日当天">今日</button>
+                <button class="range-btn" data-range="month" data-tip="统计基准日所在月份截至当前">本月</button>
+                <button class="range-btn" data-range="7d" data-tip="统计基准日向前7天">近7天</button>
+                <button class="range-btn" data-range="30d" data-tip="统计基准日向前30天">近30天</button>
+                <button class="range-btn" data-range="90d" data-tip="统计基准日向前90天">近90天</button>
+            </div>
+        </div>
+        <div class="top-center">
+            <h1>总体风险敞口仪表盘</h1>
+            <p>银航宝 · 航运金融风控大屏</p>
+        </div>
+        <div class="top-right">
+            <div class="clock" id="cnClock">--</div>
+            <div class="meta">
+                <div class="currency-select" id="currencySelect">
+                    <button class="currency-btn" id="currencyBtn" type="button" data-tip="切换展示币种">
+                        币种：<span id="currencyTag">CNY</span>
+                    </button>
+                    <div class="currency-options" id="currencyOptions">
+                        <button type="button" data-currency="CNY">CNY</button>
+                        <button type="button" data-currency="USD">USD</button>
+                        <button type="button" data-currency="HKD">HKD</button>
+                        <button type="button" data-currency="GBP">GBP</button>
+                        <button type="button" data-currency="EUR">EUR</button>
+                    </div>
+                </div>
+                <div class="unit-select" id="unitSelect">
+                    <button class="unit-btn" id="unitBtn" type="button" data-tip="切换金额单位">
+                        单位：<span id="unitTag">万元</span>
+                    </button>
+                    <div class="unit-options" id="unitOptions">
+                        <button type="button" data-unit="10000">万元</button>
+                        <button type="button" data-unit="1000000">百万元</button>
+                        <button type="button" data-unit="10000000">千万元</button>
+                        <button type="button" data-unit="100000000">亿元</button>
+                    </div>
+                </div>
+                <div class="refresh" data-tip="自动刷新间隔">
+                    <label for="refreshInterval">刷新</label>
+                    <select id="refreshInterval">
+                        <option value="5">5分钟</option>
+                        <option value="10" selected>10分钟</option>
+                        <option value="30">30分钟</option>
+                    </select>
+                </div>
+                <button class="logout-btn" id="logoutBtn" type="button" data-tip="退出登录">
+                    退出
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="grid">
+        <section class="card exposure" data-drill="overall">
+            <header>
+                <h2>总体风险敞口</h2>
+                <span class="sub">实时总敞口 + 高风险占比</span>
+            </header>
+            <div class="exposure-content">
+                <div class="big-number">
+                    <div class="label">总敞口（<span id="exposureCurrency">CNY</span>）</div>
+                    <div class="value" id="totalExposure">--</div>
+                    <div class="delta">
+                        高风险敞口 <span id="highRiskExposure">--</span>
+                        <span class="ratio" id="highRiskRatio">--</span>
+                    </div>
+                </div>
+                <div class="donut-wrap">
+                    <div class="donut" id="riskDonut">
+                        <div class="donut-center">
+                            <div class="donut-title">风险分布</div>
+                            <div class="donut-value" id="riskDonutValue">--</div>
+                        </div>
+                    </div>
+                    <div class="legend" id="riskDistribution"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card alerts" data-drill="alerts">
+            <header>
+                <h2>高风险预警看板</h2>
+                <span class="sub">高风险红榜 + 资产统计</span>
+            </header>
+            <div class="alert-metrics">
+                <div class="metric">
+                    <span>高风险企业</span>
+                    <strong id="highRiskCompanyCount">0</strong>
+                </div>
+                <div class="metric">
+                    <span>高风险船舶</span>
+                    <strong id="highRiskVesselCount">0</strong>
+                </div>
+                <div class="metric">
+                    <span>高风险资产</span>
+                    <strong id="highRiskAssetCount">0</strong>
+                </div>
+                <div class="metric">
+                    <span>资产总数</span>
+                    <strong id="totalAssetCount">0</strong>
+                </div>
+            </div>
+            <div class="alert-list">
+                <div class="list-title">高风险资产红榜</div>
+                <div class="list-body" id="alertList"></div>
+            </div>
+        </section>
+
+        <section class="card npl has-ship-decoration" data-drill="npl">
+            <header>
+                <h2>不良资产监控</h2>
+                <span class="sub">NPL率 + 资产质量</span>
+            </header>
+            <div class="npl-grid">
+                <div class="npl-block">
+                    <div class="label">NPL率</div>
+                    <div class="value" id="nplRate">--</div>
+                    <div class="desc" id="nplAmount">--</div>
+                </div>
+                <div class="npl-block">
+                    <div class="label">资产总额</div>
+                    <div class="value" id="totalAssetAmount">--</div>
+                    <div class="desc" id="totalAssetDesc">活跃资产统计</div>
+                </div>
+            </div>
+            <div class="asset-currency-bars" id="assetCurrencyBars"></div>
+        </section>
+
+        <section class="card distribution" data-drill="distribution">
+            <header>
+                <h2>风险等级分布</h2>
+                <span class="sub">企业 / 船舶</span>
+            </header>
+            <div class="dual-donut">
+                <div class="donut-block">
+                    <div class="mini-title">企业风险</div>
+                    <div class="donut small" id="companyDonut">
+                        <div class="donut-center">
+                            <div class="donut-value" id="companyDonutValue">--</div>
+                        </div>
+                    </div>
+                    <div class="legend" id="companyLegend"></div>
+                </div>
+                <div class="donut-block">
+                    <div class="mini-title">船舶风险</div>
+                    <div class="donut small" id="vesselDonut">
+                        <div class="donut-center">
+                            <div class="donut-value" id="vesselDonutValue">--</div>
+                        </div>
+                    </div>
+                    <div class="legend" id="vesselLegend"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card trend has-ship-decoration" data-drill="trend">
+            <header>
+                <h2>风险趋势（近30天）</h2>
+                <span class="sub">高风险敞口 / 平均风险评分</span>
+            </header>
+            <div class="chart" id="riskTrendChart">
+                <svg viewBox="0 0 560 200" preserveAspectRatio="none">
+                    <path class="line exposure" d="" />
+                    <path class="line score" d="" />
+                </svg>
+                <div class="chart-empty">暂无数据</div>
+            </div>
+            <div class="chart-legend">
+                <span class="dot exposure">高风险敞口</span>
+                <span class="dot score">平均风险评分</span>
+            </div>
+        </section>
+
+        <section class="card vessel" data-drill="vessels">
+            <header>
+                <h2>船舶风险Top10</h2>
+                <span class="sub">风险评分最高船舶</span>
+            </header>
+            <div class="list-body" id="vesselTopList"></div>
+        </section>
+
+        <section class="card credit" data-drill="credit">
+            <header>
+                <h2>授信使用进度</h2>
+                <span class="sub">已用授信 vs 建议授信</span>
+            </header>
+            <div class="credit-usage">
+                <div class="credit-value" id="creditUsageValue">--</div>
+                <div class="progress">
+                    <div class="progress-bar" id="creditUsageBar"></div>
+                </div>
+            </div>
+            <div class="credit-top" id="creditTopList"></div>
+        </section>
+
+        <section class="card factors factor-list-container" data-drill="factors">
+            <header>
+                <h2>风险因子贡献Top</h2>
+                <span class="sub">解释性分析（SHAP）</span>
+            </header>
+            <div class="factor-list" id="riskFactorList"></div>
+        </section>
+
+    </main>
+
+    <div class="toast" id="dashToast" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/dashboard/state.js"></script>
+    <script src="/static/js/dashboard/utils.js"></script>
+    <script src="/static/js/dashboard/calendar.js"></script>
+    <script src="/static/js/dashboard/app.js"></script>
+</body>
+</html>

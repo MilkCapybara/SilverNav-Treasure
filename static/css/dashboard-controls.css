@@ -1,0 +1,341 @@
+.date-group {
+    position: relative;
+}
+
+.date-toggle {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: linear-gradient(120deg, rgba(79, 168, 255, 0.2), rgba(60, 235, 220, 0.15));
+    border: 1px solid rgba(79, 168, 255, 0.55);
+    color: var(--text-main);
+    cursor: pointer;
+    box-shadow: inset 0 0 14px rgba(60, 235, 220, 0.2);
+}
+
+.date-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    background: linear-gradient(120deg, var(--cyan-400), var(--yellow-400));
+    box-shadow: 0 0 8px rgba(60, 235, 220, 0.6);
+    position: relative;
+}
+
+.date-icon::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 12px;
+    height: 12px;
+    border: 1px solid rgba(5, 20, 35, 0.6);
+    border-radius: 3px;
+    opacity: 0.6;
+}
+
+.date-label {
+    font-size: 0.85rem;
+    color: rgba(233, 246, 255, 0.7);
+}
+
+.date-value {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.date-chevron {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid rgba(126, 247, 240, 0.8);
+    border-bottom: 2px solid rgba(126, 247, 240, 0.8);
+    transform: rotate(45deg);
+}
+
+.date-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 0;
+    width: 320px;
+    padding: 16px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 30% 30%, rgba(60, 235, 220, 0.12), transparent 55%),
+        radial-gradient(circle at 70% 60%, rgba(79, 168, 255, 0.18), transparent 55%),
+        linear-gradient(140deg, rgba(6, 22, 39, 0.98), rgba(9, 31, 56, 0.96));
+    border: 1px solid rgba(79, 168, 255, 0.5);
+    box-shadow: 0 16px 40px rgba(4, 10, 20, 0.6);
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 60;
+    overflow: hidden;
+}
+
+.date-panel::before {
+    content: "";
+    position: absolute;
+    inset: -30%;
+    background: radial-gradient(circle, rgba(60, 235, 220, 0.18) 0, transparent 45%),
+        repeating-radial-gradient(circle, rgba(79, 168, 255, 0.15) 0, rgba(79, 168, 255, 0.15) 1px, transparent 1px, transparent 14px);
+    opacity: 0.4;
+}
+
+.date-panel.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.date-panel-header {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.month-label {
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.nav-btn {
+    background: rgba(15, 43, 75, 0.8);
+    color: var(--cyan-300);
+    border: 1px solid rgba(79, 168, 255, 0.4);
+    border-radius: 8px;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.week-row {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    font-size: 0.75rem;
+    color: rgba(233, 246, 255, 0.7);
+    margin-bottom: 6px;
+}
+
+.date-grid {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.date-cell {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    border: 1px solid rgba(79, 168, 255, 0.25);
+    background: rgba(7, 23, 40, 0.6);
+    color: var(--text-main);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.date-cell.muted {
+    color: rgba(233, 246, 255, 0.35);
+}
+
+.date-cell.today {
+    border-color: rgba(255, 214, 92, 0.6);
+    color: var(--yellow-400);
+}
+
+.date-cell.selected {
+    background: linear-gradient(120deg, rgba(79, 168, 255, 0.9), rgba(60, 235, 220, 0.9));
+    color: #051423;
+    border-color: transparent;
+}
+
+.date-group .date-hint {
+    font-size: 0.75rem;
+    color: rgba(233, 246, 255, 0.55);
+}
+
+.currency-select {
+    position: relative;
+}
+
+.currency-btn,
+.unit-btn {
+    background: linear-gradient(120deg, rgba(79, 168, 255, 0.2), rgba(60, 235, 220, 0.15));
+    border: 1px solid rgba(79, 168, 255, 0.55);
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: inset 0 0 14px rgba(60, 235, 220, 0.2);
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.currency-btn::before,
+.unit-btn::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    background: linear-gradient(120deg, var(--cyan-400), var(--yellow-400));
+    box-shadow: 0 0 8px rgba(60, 235, 220, 0.6);
+}
+
+.currency-btn:hover,
+.unit-btn:hover {
+    background: linear-gradient(120deg, rgba(79, 168, 255, 0.3), rgba(60, 235, 220, 0.25));
+    border-color: rgba(60, 235, 220, 0.7);
+    box-shadow: inset 0 0 18px rgba(60, 235, 220, 0.3), 0 0 12px rgba(60, 235, 220, 0.4);
+}
+
+.currency-options,
+.unit-options {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    display: flex;
+    gap: 8px;
+    background: radial-gradient(circle at 30% 30%, rgba(60, 235, 220, 0.12), transparent 55%),
+        radial-gradient(circle at 70% 60%, rgba(79, 168, 255, 0.18), transparent 55%),
+        linear-gradient(140deg, rgba(6, 22, 39, 0.98), rgba(9, 31, 56, 0.96));
+    border: 1px solid rgba(79, 168, 255, 0.5);
+    border-radius: 12px;
+    padding: 8px 10px;
+    min-width: 300px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.currency-options.show,
+.unit-options.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.currency-options button,
+.unit-options button {
+    background: rgba(79, 168, 255, 0.16);
+    border: 1px solid rgba(79, 168, 255, 0.4);
+    color: var(--text-main);
+    padding: 6px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.currency-options button:hover,
+.currency-options button.active,
+.unit-options button:hover,
+.unit-options button.active {
+    background: linear-gradient(120deg, rgba(79, 168, 255, 0.95), rgba(60, 235, 220, 0.95));
+    color: #051423;
+    border-color: transparent;
+    box-shadow: 0 0 12px rgba(60, 235, 220, 0.6);
+}
+
+.unit-select {
+    position: relative;
+}
+
+.logout-btn {
+    background: linear-gradient(120deg, rgba(79, 168, 255, 0.2), rgba(60, 235, 220, 0.15));
+    border: 1px solid rgba(79, 168, 255, 0.55);
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 0 14px rgba(60, 235, 220, 0.2);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logout-btn::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    background: linear-gradient(120deg, var(--cyan-400), var(--yellow-400));
+    box-shadow: 0 0 8px rgba(60, 235, 220, 0.6);
+}
+
+.logout-btn::after {
+    content: "⏻";
+    position: absolute;
+    left: 12px;
+    font-size: 0.9rem;
+    color: rgba(5, 20, 35, 0.8);
+    font-weight: 700;
+}
+
+.logout-btn:hover {
+    background: linear-gradient(120deg, rgba(255, 90, 122, 0.3), rgba(255, 90, 122, 0.2));
+    border-color: rgba(255, 90, 122, 0.7);
+    color: var(--accent-red);
+    box-shadow: inset 0 0 18px rgba(255, 90, 122, 0.3), 0 0 12px rgba(255, 90, 122, 0.4);
+}
+
+.logout-btn:hover::before {
+    background: linear-gradient(120deg, var(--accent-red), rgba(255, 90, 122, 0.8));
+}
+
+[data-tip] {
+    position: relative;
+}
+
+[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%);
+    background: rgba(7, 23, 40, 0.92);
+    border: 1px solid rgba(79, 168, 255, 0.4);
+    color: var(--text-main);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+    z-index: 20;
+}
+
+@media (max-width: 720px) {
+    .date-group {
+        align-items: center;
+    }
+
+    .date-group .date-hint {
+        text-align: center;
+    }
+}

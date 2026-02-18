@@ -24,6 +24,10 @@ body {
     overflow: hidden;
 }
 
+body.dashboard-open {
+    overflow: auto;
+}
+
 body {
     font-family: "Rajdhani", "Orbitron", "Segoe UI", sans-serif;
     color: #f8fbff;
