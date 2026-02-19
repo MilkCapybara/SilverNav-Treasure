@@ -6,6 +6,7 @@
     <title>银航宝 · 风险明细</title>
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+    <link rel="stylesheet" href="/static/css/detail.css">
 </head>
 <body class="dashboard-body detail-page">
     <div class="skyline" aria-hidden="true"></div>
@@ -28,18 +29,13 @@
     </header>
 
     <main class="detail-content">
-        <section class="card">
-            <header>
-                <h2>明细内容</h2>
-                <span class="sub">该页面用于后续扩展数据列表与钻取分析</span>
-            </header>
-            <div class="empty-block">暂无明细数据，敬请期待。</div>
-        </section>
+        <!-- 动态内容将由detail.js渲染 -->
     </main>
+
+    <div class="toast" id="detailToast" role="status" aria-live="polite"></div>
 
     <script src="/static/js/dashboard/state.js"></script>
     <script src="/static/js/dashboard/utils.js"></script>
-    <script src="/static/js/dashboard/calendar.js"></script>
-    <script src="/static/js/dashboard/app.js"></script>
+    <script src="/static/js/detail.js"></script>
 </body>
 </html>
