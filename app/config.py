@@ -4,6 +4,7 @@ import os
 
 class Settings:
     """应用配置"""
+    # PostgreSQL配置
     db_host = os.getenv("SILVERNAV_DB_HOST", "1.15.225.134")
     db_port = int(os.getenv("SILVERNAV_DB_PORT", "5432"))
     db_name = os.getenv("SILVERNAV_DB_NAME", "silvernav_db")
@@ -15,6 +16,15 @@ class Settings:
     read_user = os.getenv("SILVERNAV_DB_READ_USER", "wjyandghx")
     read_password = os.getenv("SILVERNAV_DB_READ_PASSWORD", "ghxandwjy")
 
+    # MongoDB配置
+    mongo_host = os.getenv("SILVERNAV_MONGO_HOST", "1.15.225.134")
+    mongo_port = int(os.getenv("SILVERNAV_MONGO_PORT", "27017"))
+    mongo_db = os.getenv("SILVERNAV_MONGO_DB", "silvernav")
+    mongo_user = os.getenv("SILVERNAV_MONGO_USER", "admin")
+    mongo_password = os.getenv("SILVERNAV_MONGO_PASSWORD", "sun2137405")
+    mongo_auth_source = os.getenv("SILVERNAV_MONGO_AUTH_SOURCE", "admin")
+
+    # 认证配置
     root_account = os.getenv("SILVERNAV_ROOT_ACCOUNT", "root")
     root_password = os.getenv("SILVERNAV_ROOT_PASSWORD", "sunfannb0307SF?")
 

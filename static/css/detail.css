@@ -102,7 +102,7 @@
     box-shadow: 0 4px 12px rgba(60, 235, 220, 0.3);
 }
 
-/* 统计卡片样式 */
+/* 统计卡片样式 - 航运金融风格增强 */
 .detail-stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -111,17 +111,49 @@
 }
 
 .stat-card {
-    background: linear-gradient(135deg, rgba(60, 235, 220, 0.1), rgba(79, 168, 255, 0.1));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(60, 235, 220, 0.15), rgba(79, 168, 255, 0.15));
+    border: 1px solid rgba(60, 235, 220, 0.3);
+    border-radius: 12px;
     padding: 20px;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(60, 235, 220, 0.1);
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(60, 235, 220, 0.1), transparent);
+    animation: shimmer 3s infinite;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(60, 235, 220, 0.3);
+    border-color: rgba(60, 235, 220, 0.6);
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    }
+    100% {
+        transform: translateX(100%) translateY(100%) rotate(45deg);
+    }
 }
 
 .stat-label {
     color: var(--text-muted);
     font-size: 14px;
     margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
 }
 
 .stat-value {
@@ -129,30 +161,48 @@
     font-size: 28px;
     font-weight: 600;
     font-family: 'Courier New', monospace;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 10px rgba(60, 235, 220, 0.5);
 }
 
-/* 表格样式 */
+/* 表格样式 - 航运金融风格增强 */
 .detail-table-container {
     overflow-x: auto;
     margin-bottom: 24px;
+    position: relative;
 }
 
 .detail-table-container h3 {
     color: var(--text-primary);
     font-size: 18px;
     margin-bottom: 16px;
+    text-shadow: 0 0 10px rgba(60, 235, 220, 0.3);
 }
 
 .detail-table {
     width: 100%;
     border-collapse: collapse;
-    background: rgba(10, 20, 35, 0.3);
+    background: rgba(10, 20, 35, 0.5);
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    table-layout: fixed;
 }
 
 .detail-table thead {
-    background: rgba(60, 235, 220, 0.1);
+    background: linear-gradient(135deg, rgba(60, 235, 220, 0.2), rgba(79, 168, 255, 0.2));
+    position: relative;
+}
+
+.detail-table thead::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
 }
 
 .detail-table th {
@@ -162,6 +212,10 @@
     font-size: 14px;
     font-weight: 500;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-shadow: 0 0 8px rgba(60, 235, 220, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .detail-table td {
@@ -169,14 +223,18 @@
     color: var(--text-primary);
     font-size: 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .detail-table tbody tr {
-    transition: background 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .detail-table tbody tr:hover {
-    background: rgba(60, 235, 220, 0.05);
+    background: rgba(60, 235, 220, 0.08);
+    box-shadow: inset 3px 0 0 var(--primary-color), 0 0 20px rgba(60, 235, 220, 0.2);
 }
 
 /* 分页样式 */
@@ -224,10 +282,39 @@
 }
 
 .detail-chart-card {
-    background: rgba(10, 20, 35, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    background: rgba(10, 20, 35, 0.6);
+    border: 1px solid rgba(60, 235, 220, 0.2);
+    border-radius: 12px;
     padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.detail-chart-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+    animation: scanline 3s infinite;
+}
+
+@keyframes scanline {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.detail-chart-card:hover {
+    border-color: rgba(60, 235, 220, 0.5);
+    box-shadow: 0 8px 30px rgba(60, 235, 220, 0.2);
 }
 
 .detail-chart-card.full-width {
@@ -239,7 +326,10 @@
     font-size: 16px;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(60, 235, 220, 0.2);
+    text-shadow: 0 0 10px rgba(60, 235, 220, 0.3);
+    position: relative;
+    z-index: 1;
 }
 
 .chart-placeholder {
@@ -337,32 +427,53 @@
     font-size: 14px;
 }
 
-/* Toast样式 */
+/* Toast样式 - 航运科技风格（黄色金融风格） */
 #detailToast {
     position: fixed;
-    top: 80px;
-    right: 20px;
-    padding: 12px 24px;
-    background: rgba(60, 235, 220, 0.95);
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    padding: 24px 48px;
+    background: linear-gradient(135deg, rgba(255, 214, 92, 0.95), rgba(255, 193, 7, 0.95));
     color: #0a1628;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
     opacity: 0;
-    transform: translateX(400px);
-    transition: all 0.3s ease;
     z-index: 10000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px rgba(255, 214, 92, 0.5), 0 0 60px rgba(255, 214, 92, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    letter-spacing: 2px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: none;
 }
 
 #detailToast.show {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate(-50%, -50%) scale(1);
+    animation: toastPulse 1s ease-in-out;
 }
 
 #detailToast.error {
-    background: rgba(255, 90, 122, 0.95);
+    background: linear-gradient(135deg, rgba(255, 90, 122, 0.95), rgba(255, 120, 150, 0.95));
     color: white;
+    box-shadow: 0 8px 32px rgba(255, 90, 122, 0.5), 0 0 60px rgba(255, 90, 122, 0.3);
+}
+
+@keyframes toastPulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
 }
 
 /* 响应式设计 */

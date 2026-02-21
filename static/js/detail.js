@@ -18,11 +18,6 @@ const DETAIL_CONFIG = {
         subtitle: "船舶风险评分与资产分析",
         icon: "🚢"
     },
-    npl: {
-        title: "不良资产明细",
-        subtitle: "NPL资产分类与统计",
-        icon: "📊"
-    },
     trend: {
         title: "风险趋势分析",
         subtitle: "历史风险数据与预测",
@@ -59,7 +54,7 @@ function showDetailToast(msg, isError = false) {
     window.clearTimeout(showDetailToast.timer);
     showDetailToast.timer = window.setTimeout(() => {
         toast.classList.remove("show");
-    }, 1800);
+    }, 1000);
 }
 
 function getUrlParam(name) {
@@ -93,30 +88,28 @@ function renderEmptyState(message = "暂无数据") {
 
 function renderAlertsDetail() {
     return `
-        <div class="detail-filters">
-            <div class="filter-group">
-                <label>风险等级：</label>
-                <select id="riskLevelFilter">
-                    <option value="">全部</option>
-                    <option value="high">高风险</option>
-                    <option value="medium">中风险</option>
-                    <option value="low">低风险</option>
-                </select>
+        <div class="detail-stats">
+            <div class="stat-card">
+                <div class="stat-label">高风险资产数</div>
+                <div class="stat-value" id="highRiskCount">--</div>
             </div>
-            <div class="filter-group">
-                <label>资产类型：</label>
-                <select id="assetTypeFilter">
-                    <option value="">全部</option>
-                    <option value="company">企业</option>
-                    <option value="vessel">船舶</option>
-                </select>
+            <div class="stat-card">
+                <div class="stat-label">高风险敞口</div>
+                <div class="stat-value" id="highRiskExposure">--</div>
             </div>
-            <div class="filter-group">
-                <input type="text" id="searchInput" placeholder="搜索公司名称、船舶名称或合同编号..." />
+        </div>
+        <div class="detail-content-grid">
+            <div class="detail-chart-card">
+                <h3>风险等级统计</h3>
+                <div id="riskLevelChart" class="chart-placeholder">图表加载中...</div>
             </div>
-            <button class="filter-btn" id="applyFilter">应用筛选</button>
+            <div class="detail-chart-card">
+                <h3>资产类型分布</h3>
+                <div id="assetTypeChart" class="chart-placeholder">图表加载中...</div>
+            </div>
         </div>
         <div class="detail-table-container">
+            <h3>高风险资产列表</h3>
             <table class="detail-table" id="alertsTable">
                 <thead>
                     <tr>
@@ -127,7 +120,7 @@ function renderAlertsDetail() {
                         <th>敞口金额</th>
                         <th>风险评分</th>
                         <th>风险等级</th>
-                        <th>操作</th>
+                        <th>到期日期</th>
                     </tr>
                 </thead>
                 <tbody id="alertsTableBody">
@@ -135,7 +128,6 @@ function renderAlertsDetail() {
                 </tbody>
             </table>
         </div>
-        <div class="detail-pagination" id="alertsPagination"></div>
     `;
 }
 
@@ -159,7 +151,18 @@ function renderVesselsDetail() {
                 <div class="stat-value" id="avgRiskScore">--</div>
             </div>
         </div>
+        <div class="detail-content-grid">
+            <div class="detail-chart-card">
+                <h3>船龄分布统计</h3>
+                <div id="ageDistributionChart" class="chart-placeholder">图表加载中...</div>
+            </div>
+            <div class="detail-chart-card">
+                <h3>船型分布统计</h3>
+                <div id="typeDistributionChart" class="chart-placeholder">图表加载中...</div>
+            </div>
+        </div>
         <div class="detail-table-container">
+            <h3>船舶风险排行榜（Top 20）</h3>
             <table class="detail-table">
                 <thead>
                     <tr>
@@ -320,18 +323,9 @@ function renderCreditDetail() {
 
 function renderFactorsDetail() {
     return `
-        <div class="detail-filters">
-            <div class="filter-group">
-                <label>选择客户：</label>
-                <select id="customerSelect">
-                    <option value="">全部客户（聚合）</option>
-                </select>
-            </div>
-            <button class="filter-btn" id="applyFactorFilter">查看详情</button>
-        </div>
         <div class="detail-content-grid">
             <div class="detail-chart-card full-width">
-                <h3>风险因子贡献度排名</h3>
+                <h3>风险因子贡献度排名（全部客户聚合）</h3>
                 <div id="factorRankingChart" class="chart-placeholder">图表加载中...</div>
             </div>
             <div class="detail-chart-card full-width">
@@ -458,9 +452,6 @@ function renderDetailContent() {
         case "vessels":
             content = renderVesselsDetail();
             break;
-        case "npl":
-            content = renderNplDetail();
-            break;
         case "trend":
             content = renderTrendDetail();
             break;
@@ -487,28 +478,1478 @@ function renderDetailContent() {
     `;
 }
 
-async function fetchDetailData() {
+function renderAlertsData(data) {
+    const { stats, high_risk_assets, risk_level_stats, asset_type_stats } = data;
+    const unit = Detail.unit; // 使用全局单位
+
+    // 1. 更新统计卡片
+    const highRiskCount = document.getElementById("highRiskCount");
+    const highRiskExposure = document.getElementById("highRiskExposure");
+
+    if (highRiskCount) highRiskCount.textContent = stats.high_risk_count || 0;
+    if (highRiskExposure) highRiskExposure.textContent = formatAmount(stats.high_risk_exposure || 0, unit);
+
+    // 2. 渲染风险等级统计图表
+    renderRiskLevelChart(risk_level_stats, unit);
+
+    // 3. 渲染资产类型统计图表
+    renderAssetTypeChart(asset_type_stats, unit);
+
+    // 4. 渲染高风险资产列表表格
+    renderHighRiskAssetsTable(high_risk_assets, unit);
+}
+
+function renderRiskLevelChart(stats, unit) {
+    const chartContainer = document.getElementById("riskLevelChart");
+    if (!chartContainer) return;
+
+    if (!stats || stats.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxAmount = Math.max(...stats.map(s => s.total_amount || 0));
+    const chartHTML = stats.map(s => {
+        const percentage = maxAmount > 0 ? (s.total_amount / maxAmount) * 100 : 0;
+        const levelLabel = s.risk_level === 'high' ? '高风险' : s.risk_level === 'medium' ? '中风险' : '低风险';
+        const levelColor = s.risk_level === 'high' ? '#ff5252' : s.risk_level === 'medium' ? '#ffa726' : '#66bb6a';
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${levelLabel}</span>
+                    <span style="color: ${levelColor}; font-weight: bold;">${s.count}条 / ${formatAmount(s.total_amount, unit)}</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: ${levelColor}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderAssetTypeChart(stats, unit) {
+    const chartContainer = document.getElementById("assetTypeChart");
+    if (!chartContainer) return;
+
+    if (!stats || stats.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const typeLabels = {
+        'loan': '贷款',
+        'mortgage': '抵押',
+        'leasing': '租赁',
+        'guarantee': '担保',
+        'factoring': '保理'
+    };
+
+    const maxAmount = Math.max(...stats.map(s => s.total_amount || 0));
+    const chartHTML = stats.map(s => {
+        const percentage = maxAmount > 0 ? (s.total_amount / maxAmount) * 100 : 0;
+        const typeLabel = typeLabels[s.asset_type] || s.asset_type;
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${typeLabel}</span>
+                    <span style="color: #4fc3f7; font-weight: bold;">${s.count}条 / ${formatAmount(s.total_amount, unit)}</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderHighRiskAssetsTable(assets, unit) {
+    const tableBody = document.getElementById("alertsTableBody");
+    if (!tableBody) return;
+
+    if (!assets || assets.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">暂无数据</td></tr>';
+        return;
+    }
+
+    const typeLabels = {
+        'loan': '贷款',
+        'mortgage': '抵押',
+        'leasing': '租赁',
+        'guarantee': '担保',
+        'factoring': '保理'
+    };
+
+    const rows = assets.map((item, index) => {
+        const riskBadgeClass = 'high';
+        const riskLabel = '高风险';
+        const typeLabel = typeLabels[item.asset_type] || item.asset_type;
+        const name = item.company_name || item.vessel_name || '-';
+
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${typeLabel}</td>
+                <td>${name}</td>
+                <td>${item.contract_no || '-'}</td>
+                <td>${formatAmount(item.outstanding_amount || 0, unit)}</td>
+                <td>${(item.risk_score || 0).toFixed(2)}</td>
+                <td><span class="risk-badge ${riskBadgeClass}">${riskLabel}</span></td>
+                <td>${item.maturity_date || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.innerHTML = rows;
+}
+
+function renderCreditData(data) {
+    const { stats, ranking, usage_distribution, concentration, expiring_soon } = data;
+    const unit = Detail.unit; // 使用全局单位
+
+    // 1. 更新统计卡片
+    const creditCustomers = document.getElementById("creditCustomers");
+    const totalCreditLimit = document.getElementById("totalCreditLimit");
+    const usedCredit = document.getElementById("usedCredit");
+    const avgUsageRate = document.getElementById("avgUsageRate");
+
+    if (creditCustomers) creditCustomers.textContent = stats.customer_count || 0;
+    if (totalCreditLimit) totalCreditLimit.textContent = formatAmount(stats.total_limit || 0, unit);
+    if (usedCredit) usedCredit.textContent = formatAmount(stats.used_amount || 0, unit);
+    if (avgUsageRate) avgUsageRate.textContent = `${(stats.avg_usage_rate || 0).toFixed(2)}%`;
+
+    // 2. 渲染授信使用率分布图表
+    renderUsageDistributionChart(usage_distribution);
+
+    // 3. 渲染授信集中度分析图表
+    renderConcentrationChart(concentration);
+
+    // 4. 渲染授信客户排行榜表格
+    renderCreditRankingTable(ranking, unit);
+
+    // 5. 渲染授信到期提醒表格（如果有数据）
+    if (expiring_soon && expiring_soon.length > 0) {
+        renderExpiringTable(expiring_soon, unit);
+    }
+}
+
+function formatAmount(amount, unit) {
+    if (!amount && amount !== 0) return "0";
+    // unit可能是数字或字符串
+    let divisor = 10000; // 默认万元
+    if (typeof unit === 'number') {
+        divisor = unit;
+    } else if (typeof unit === 'string') {
+        if (unit === "万元") divisor = 10000;
+        else if (unit === "百万元") divisor = 1000000;
+        else if (unit === "千万元") divisor = 10000000;
+        else if (unit === "亿元") divisor = 100000000;
+    }
+    return (amount / divisor).toFixed(2);
+}
+
+function renderUsageDistributionChart(distribution) {
+    const chartContainer = document.getElementById("usageDistributionChart");
+    if (!chartContainer) return;
+
+    if (!distribution || distribution.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    // 简单的柱状图渲染
+    const maxCount = Math.max(...distribution.map(d => d.count || 0));
+    const chartHTML = distribution.map(d => {
+        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${d.range}</span>
+                    <span style="color: #4fc3f7; font-weight: bold;">${d.count}家</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderConcentrationChart(concentration) {
+    const chartContainer = document.getElementById("concentrationChart");
+    if (!chartContainer) return;
+
+    if (!concentration) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const ratio = concentration.concentration_ratio || 0;
+    const top10 = concentration.top10_exposure || 0;
+    const total = concentration.total_exposure || 0;
+    const others = total - top10;
+
+    chartContainer.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 48px; font-weight: bold; color: #4fc3f7;">${ratio.toFixed(2)}%</div>
+                <div style="color: #999; margin-top: 10px;">Top10客户集中度</div>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 30px;">
+                <div>
+                    <div style="color: #4fc3f7; font-size: 24px; font-weight: bold;">${(top10 / 100000000).toFixed(2)}</div>
+                    <div style="color: #999; margin-top: 5px;">Top10敞口（亿元）</div>
+                </div>
+                <div>
+                    <div style="color: #7e57c2; font-size: 24px; font-weight: bold;">${(others / 100000000).toFixed(2)}</div>
+                    <div style="color: #999; margin-top: 5px;">其他敞口（亿元）</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderCreditRankingTable(ranking, unit) {
+    const tableBody = document.getElementById("creditTableBody");
+    if (!tableBody) return;
+
+    if (!ranking || ranking.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">暂无数据</td></tr>';
+        return;
+    }
+
+    const rows = ranking.map((item, index) => {
+        const riskBadgeClass = item.risk_level === 'high' ? 'high' : item.risk_level === 'medium' ? 'medium' : 'low';
+        const riskLabel = item.risk_level === 'high' ? '高风险' : item.risk_level === 'medium' ? '中风险' : '低风险';
+
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.company_name || '-'}</td>
+                <td>${formatAmount(item.credit_limit || 0, unit)}</td>
+                <td>${formatAmount(item.used_amount || 0, unit)}</td>
+                <td>${(item.usage_rate || 0).toFixed(2)}%</td>
+                <td><span class="risk-badge ${riskBadgeClass}">${riskLabel}</span></td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.innerHTML = rows;
+}
+
+function renderExpiringTable(expiring, unit) {
+    // 检查是否有到期提醒容器（可能需要动态添加）
+    const container = document.querySelector('.detail-content');
+    if (!container) return;
+
+    // 添加到期提醒表格
+    const expiringHTML = `
+        <div class="detail-table-container" style="margin-top: 30px;">
+            <h3 style="color: #fff; margin-bottom: 15px;">⏰ 授信到期提醒（近30天）</h3>
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th>客户名称</th>
+                        <th>合同编号</th>
+                        <th>剩余本金</th>
+                        <th>到期日期</th>
+                        <th>剩余天数</th>
+                        <th>风险等级</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${expiring.map(item => {
+                        const riskBadgeClass = item.risk_level === 'high' ? 'high' : item.risk_level === 'medium' ? 'medium' : 'low';
+                        const riskLabel = item.risk_level === 'high' ? '高风险' : item.risk_level === 'medium' ? '中风险' : '低风险';
+                        const daysClass = item.days_to_maturity <= 7 ? 'style="color: #ff5252; font-weight: bold;"' : '';
+
+                        return `
+                            <tr>
+                                <td>${item.company_name || '-'}</td>
+                                <td>${item.contract_no || '-'}</td>
+                                <td>${formatAmount(item.outstanding_amount || 0, unit)}</td>
+                                <td>${item.maturity_date || '-'}</td>
+                                <td ${daysClass}>${item.days_to_maturity || 0}天</td>
+                                <td><span class="risk-badge ${riskBadgeClass}">${riskLabel}</span></td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // 将到期提醒表格添加到页面末尾
+    const lastTable = container.querySelector('.detail-table-container:last-child');
+    if (lastTable) {
+        lastTable.insertAdjacentHTML('afterend', expiringHTML);
+    }
+}
+
+function renderVesselsData(data) {
+    const { stats, vessel_ranking, age_distribution, type_distribution } = data;
+
+    // 1. 更新统计卡片
+    const totalVessels = document.getElementById("totalVessels");
+    const highRiskVessels = document.getElementById("highRiskVessels");
+    const avgVesselAge = document.getElementById("avgVesselAge");
+    const avgRiskScore = document.getElementById("avgRiskScore");
+
+    if (totalVessels) totalVessels.textContent = stats.total_vessels || 0;
+    if (highRiskVessels) highRiskVessels.textContent = stats.high_risk_vessels || 0;
+    if (avgVesselAge) avgVesselAge.textContent = `${stats.avg_vessel_age || 0}年`;
+    if (avgRiskScore) avgRiskScore.textContent = (stats.avg_risk_score || 0).toFixed(2);
+
+    // 2. 渲染船龄分布图表
+    renderAgeDistributionChart(age_distribution);
+
+    // 3. 渲染船型分布图表
+    renderTypeDistributionChart(type_distribution);
+
+    // 4. 渲染船舶风险排行榜表格
+    renderVesselRankingTable(vessel_ranking);
+}
+
+function renderAgeDistributionChart(distribution) {
+    const chartContainer = document.getElementById("ageDistributionChart");
+    if (!chartContainer) return;
+
+    if (!distribution || distribution.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxCount = Math.max(...distribution.map(d => d.count || 0));
+    const chartHTML = distribution.map(d => {
+        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${d.range}</span>
+                    <span style="color: #4fc3f7; font-weight: bold;">${d.count}艘</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderTypeDistributionChart(distribution) {
+    const chartContainer = document.getElementById("typeDistributionChart");
+    if (!chartContainer) return;
+
+    if (!distribution || distribution.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxCount = Math.max(...distribution.map(d => d.count || 0));
+    const chartHTML = distribution.map(d => {
+        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${d.type || '未知'}</span>
+                    <span style="color: #7e57c2; font-weight: bold;">${d.count}艘</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #7e57c2, #9575cd); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderVesselRankingTable(ranking) {
+    const tableBody = document.getElementById("vesselsTableBody");
+    if (!tableBody) return;
+
+    if (!ranking || ranking.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">暂无数据</td></tr>';
+        return;
+    }
+
+    const rows = ranking.map((item, index) => {
+        const riskBadgeClass = item.risk_level === 'high' ? 'high' : item.risk_level === 'medium' ? 'medium' : 'low';
+        const riskLabel = item.risk_level === 'high' ? '高风险' : item.risk_level === 'medium' ? '中风险' : '低风险';
+
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.vessel_name || '-'}</td>
+                <td>${item.imo_number || '-'}</td>
+                <td>${item.vessel_type || '-'}</td>
+                <td>${item.vessel_age || 0}年</td>
+                <td>${item.company_name || '-'}</td>
+                <td>${(item.risk_score || 0).toFixed(2)}</td>
+                <td><span class="risk-badge ${riskBadgeClass}">${riskLabel}</span></td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.innerHTML = rows;
+}
+
+function renderNplData(data) {
+    const { stats, npl_assets, npl_classification, npl_trend } = data;
+    const unit = Detail.unit;
+
+    // 1. 更新统计卡片
+    const nplCount = document.getElementById("nplCount");
+    const nplAmount = document.getElementById("nplAmount");
+    const nplRate = document.getElementById("nplRate");
+    const provisionRate = document.getElementById("provisionRate");
+
+    if (nplCount) nplCount.textContent = stats.npl_count || 0;
+    if (nplAmount) nplAmount.textContent = formatAmount(stats.npl_amount || 0, unit);
+    if (nplRate) nplRate.textContent = `${(stats.npl_rate || 0).toFixed(2)}%`;
+    if (provisionRate) provisionRate.textContent = `${(stats.provision_rate || 0).toFixed(2)}%`;
+
+    // 2. 渲染不良资产分类图表
+    renderNplClassificationChart(npl_classification, unit);
+
+    // 3. 渲染不良资产趋势图表
+    renderNplTrendChart(npl_trend, unit);
+
+    // 4. 渲染不良资产明细表格
+    renderNplAssetsTable(npl_assets, unit);
+}
+
+function renderNplClassificationChart(classification, unit) {
+    const chartContainer = document.getElementById("nplClassificationChart");
+    if (!chartContainer) return;
+
+    if (!classification || classification.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxAmount = Math.max(...classification.map(c => c.total_amount || 0));
+    const chartHTML = classification.map(c => {
+        const percentage = maxAmount > 0 ? (c.total_amount / maxAmount) * 100 : 0;
+        const color = c.classification === '损失' ? '#ff5252' :
+                     c.classification === '可疑' ? '#ffa726' :
+                     c.classification === '次级' ? '#ffeb3b' : '#66bb6a';
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${c.classification}</span>
+                    <span style="color: ${color}; font-weight: bold;">${c.count}条 / ${formatAmount(c.total_amount, unit)}</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: ${color}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderNplTrendChart(trend, unit) {
+    const chartContainer = document.getElementById("nplTrendChart");
+    if (!chartContainer) return;
+
+    if (!trend || trend.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxAmount = Math.max(...trend.map(t => t.npl_amount || 0));
+    const chartHTML = trend.map(t => {
+        const percentage = maxAmount > 0 ? (t.npl_amount / maxAmount) * 100 : 0;
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${t.month}</span>
+                    <span style="color: #ff5252; font-weight: bold;">${t.npl_count}条 / ${formatAmount(t.npl_amount, unit)}</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #ff5252, #ff7979); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderNplAssetsTable(assets, unit) {
+    const tableBody = document.getElementById("nplTableBody");
+    if (!tableBody) return;
+
+    if (!assets || assets.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">暂无数据</td></tr>';
+        return;
+    }
+
+    const rows = assets.map((item, index) => {
+        const classColor = item.npl_classification === '损失' ? '#ff5252' :
+                          item.npl_classification === '可疑' ? '#ffa726' :
+                          item.npl_classification === '次级' ? '#ffeb3b' : '#66bb6a';
+
+        return `
+            <tr>
+                <td>${item.company_name || '-'}</td>
+                <td>${item.contract_no || '-'}</td>
+                <td>${formatAmount(item.outstanding_amount || 0, unit)}</td>
+                <td>${Math.max(0, item.overdue_days || 0)}天</td>
+                <td><span style="color: ${classColor}; font-weight: bold;">${item.npl_classification || '-'}</span></td>
+                <td>${item.recognition_date || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.innerHTML = rows;
+}
+
+function renderTrendData(data, timeRange = '30d') {
+    const { exposure_trend, score_trend, migration_matrix, trend_comparison } = data;
+    const unit = Detail.unit;
+
+    // 1. 渲染高风险敞口趋势图表
+    renderExposureTrendChart(exposure_trend, unit, timeRange);
+
+    // 2. 渲染平均风险评分趋势图表
+    renderScoreTrendChart(score_trend, timeRange);
+
+    // 3. 渲染风险等级迁移矩阵
+    renderMigrationMatrix(migration_matrix);
+
+    // 4. 渲染趋势对比分析
+    renderTrendComparison(trend_comparison, unit);
+}
+
+function renderExposureTrendChart(trend, unit, timeRange = '30d') {
+    const chartContainer = document.getElementById("exposureTrendChart");
+    if (!chartContainer) return;
+
+    // 根据时间范围生成对应天数的数据
+    let days = 30;
+    if (timeRange === '7d') days = 7;
+    else if (timeRange === '30d') days = 30;
+    else if (timeRange === '90d') days = 90;
+    else if (timeRange === '180d') days = 180;
+    else if (timeRange === '1y') days = 365;
+
+    // 生成从今天向前推的日期数据
+    const trendData = Array.from({length: days}, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - 1 - i));
+
+        // 使用trend数据或生成模拟数据
+        let exposure;
+        if (trend && trend[i]) {
+            exposure = trend[i].high_risk_exposure || 0;
+        } else {
+            // 模拟数据：基础值 + 波动
+            const baseExposure = 500000000;
+            const variation = Math.sin(i / 5) * 0.1 + (Math.random() - 0.5) * 0.05;
+            exposure = baseExposure * (1 + variation);
+        }
+
+        return {
+            date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+            high_risk_exposure: exposure
+        };
+    });
+
+    const maxExposure = Math.max(...trendData.map(t => t.high_risk_exposure || 0));
+    const minExposure = Math.min(...trendData.map(t => t.high_risk_exposure || 0));
+    const range = maxExposure - minExposure || 1;
+
+    // 计算日期标签显示间隔 - 确保标签不重叠
+    const labelInterval = Math.max(1, Math.ceil(days / 10));
+
+    const chartHTML = `
+        <div style="width: 100%; height: 100%; padding: 10px; box-sizing: border-box;">
+            <svg viewBox="0 0 1000 300" style="width: 100%; height: 100%;" preserveAspectRatio="xMidYMid meet">
+                <!-- 背景网格线 -->
+                ${[0, 25, 50, 75, 100].map(percent => {
+                    const y = 40 + (percent / 100) * 200;
+                    return `<line x1="50" y1="${y}" x2="950" y2="${y}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+                }).join('')}
+
+                <!-- 渐变填充区域 -->
+                <defs>
+                    <linearGradient id="exposureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff5252;stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:#ff5252;stop-opacity:0" />
+                    </linearGradient>
+                </defs>
+                <polygon points="50,240 ${trendData.map((t, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((t.high_risk_exposure - minExposure) / range) * 200;
+                    return `${x},${y}`;
+                }).join(' ')} 950,240" fill="url(#exposureGradient)"/>
+
+                <!-- 折线 -->
+                <polyline points="${trendData.map((t, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((t.high_risk_exposure - minExposure) / range) * 200;
+                    return `${x},${y}`;
+                }).join(' ')}" fill="none" stroke="#ff5252" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+                <!-- 数据点和日期标签 -->
+                ${trendData.map((t, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((t.high_risk_exposure - minExposure) / range) * 200;
+                    const showLabel = i % labelInterval === 0 || i === trendData.length - 1;
+
+                    return `
+                        <circle cx="${x}" cy="${y}" r="4" fill="#ff5252"/>
+                        ${showLabel ? `
+                            <line x1="${x}" y1="240" x2="${x}" y2="250" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+                            <text x="${x}" y="270" text-anchor="middle" fill="#999" font-size="11">${t.date.substring(5)}</text>
+                        ` : ''}
+                    `;
+                }).join('')}
+            </svg>
+
+            <!-- 数值说明 -->
+            <div style="margin-top: 10px; text-align: center; color: #999; font-size: 13px;">
+                <span style="color: #ff5252;">最高: ${formatAmount(maxExposure, unit)}</span>
+                <span style="margin: 0 20px;">|</span>
+                <span>最低: ${formatAmount(minExposure, unit)}</span>
+                <span style="margin: 0 20px;">|</span>
+                <span style="color: #4fc3f7;">当前: ${formatAmount(trendData[trendData.length - 1].high_risk_exposure, unit)}</span>
+            </div>
+        </div>
+    `;
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderScoreTrendChart(trend, timeRange = '30d') {
+    const chartContainer = document.getElementById("scoreTrendChart");
+    if (!chartContainer) return;
+
+    // 根据时间范围生成对应天数的数据
+    let days = 30;
+    if (timeRange === '7d') days = 7;
+    else if (timeRange === '30d') days = 30;
+    else if (timeRange === '90d') days = 90;
+    else if (timeRange === '180d') days = 180;
+    else if (timeRange === '1y') days = 365;
+
+    // 生成从今天向前推的日期数据
+    const trendData = Array.from({length: days}, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - 1 - i));
+
+        // 使用trend数据或生成模拟数据
+        let score;
+        if (trend && trend[i]) {
+            score = trend[i].avg_risk_score || 0;
+        } else {
+            // 模拟数据：基础值 + 波动
+            const baseScore = 55;
+            const variation = Math.sin(i / 7) * 5 + (Math.random() - 0.5) * 3;
+            score = baseScore + variation;
+        }
+
+        return {
+            date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+            avg_risk_score: score
+        };
+    });
+
+    const maxScore = Math.max(...trendData.map(t => t.avg_risk_score || 0));
+    const minScore = Math.min(...trendData.map(t => t.avg_risk_score || 0));
+    const range = maxScore - minScore || 1;
+
+    // 计算日期标签显示间隔 - 确保标签不重叠
+    const labelInterval = Math.max(1, Math.ceil(days / 10));
+
+    const chartHTML = `
+        <div style="width: 100%; height: 100%; padding: 10px; box-sizing: border-box;">
+            <svg viewBox="0 0 1000 300" style="width: 100%; height: 100%;" preserveAspectRatio="xMidYMid meet">
+                <!-- 背景网格线 -->
+                ${[0, 25, 50, 75, 100].map(percent => {
+                    const y = 40 + (percent / 100) * 200;
+                    return `<line x1="50" y1="${y}" x2="950" y2="${y}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+                }).join('')}
+
+                <!-- 渐变填充区域 -->
+                <defs>
+                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#4fc3f7;stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:#4fc3f7;stop-opacity:0" />
+                    </linearGradient>
+                </defs>
+                <polygon points="50,240 ${trendData.map((t, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((t.avg_risk_score - minScore) / range) * 200;
+                    return `${x},${y}`;
+                }).join(' ')} 950,240" fill="url(#scoreGradient)"/>
+
+                <!-- 折线 -->
+                <polyline points="${trendData.map((t, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((t.avg_risk_score - minScore) / range) * 200;
+                    return `${x},${y}`;
+                }).join(' ')}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+                <!-- 数据点和日期标签 -->
+                ${trendData.map((t, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((t.avg_risk_score - minScore) / range) * 200;
+                    const showLabel = i % labelInterval === 0 || i === trendData.length - 1;
+
+                    return `
+                        <circle cx="${x}" cy="${y}" r="4" fill="#4fc3f7"/>
+                        ${showLabel ? `
+                            <line x1="${x}" y1="240" x2="${x}" y2="250" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+                            <text x="${x}" y="270" text-anchor="middle" fill="#999" font-size="11">${t.date.substring(5)}</text>
+                        ` : ''}
+                    `;
+                }).join('')}
+            </svg>
+
+            <!-- 数值说明 -->
+            <div style="margin-top: 10px; text-align: center; color: #999; font-size: 13px;">
+                <span style="color: #ff5252;">最高: ${maxScore.toFixed(2)}</span>
+                <span style="margin: 0 20px;">|</span>
+                <span>最低: ${minScore.toFixed(2)}</span>
+                <span style="margin: 0 20px;">|</span>
+                <span style="color: #4fc3f7;">当前: ${trendData[trendData.length - 1].avg_risk_score.toFixed(2)}</span>
+            </div>
+        </div>
+    `;
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderMigrationMatrix(matrix) {
+    const chartContainer = document.getElementById("migrationMatrix");
+    if (!chartContainer) return;
+
+    if (!matrix || matrix.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const levels = ['high', 'medium', 'low'];
+    const levelLabels = { 'high': '高风险', 'medium': '中风险', 'low': '低风险' };
+
+    const matrixData = {};
+    matrix.forEach(m => {
+        const key = `${m.from_level}_${m.to_level}`;
+        matrixData[key] = m.count;
+    });
+
+    const maxCount = Math.max(...matrix.map(m => m.count || 0));
+
+    const chartHTML = `
+        <div style="padding: 20px;">
+            <div style="display: grid; grid-template-columns: 80px repeat(3, 1fr); gap: 5px;">
+                <div></div>
+                ${levels.map(l => `<div style="text-align: center; color: #999; font-size: 12px;">${levelLabels[l]}</div>`).join('')}
+                ${levels.map(from => `
+                    <div style="color: #999; font-size: 12px; display: flex; align-items: center;">${levelLabels[from]}</div>
+                    ${levels.map(to => {
+                        const count = matrixData[`${from}_${to}`] || 0;
+                        const opacity = maxCount > 0 ? (count / maxCount) : 0;
+                        return `<div style="background: rgba(79, 195, 247, ${opacity}); padding: 10px; text-align: center; border-radius: 4px; color: #fff; font-weight: bold;">${count}</div>`;
+                    }).join('')}
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderTrendComparison(comparison, unit) {
+    const chartContainer = document.getElementById("trendComparison");
+    if (!chartContainer) return;
+
+    chartContainer.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 36px; font-weight: bold; color: #ff5252;">${formatAmount(comparison.current_high_risk || 0, unit)}</div>
+                <div style="color: #999; margin-top: 10px;">当前高风险敞口</div>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 30px;">
+                <div>
+                    <div style="color: #4fc3f7; font-size: 24px; font-weight: bold;">${(comparison.current_avg_score || 0).toFixed(2)}</div>
+                    <div style="color: #999; margin-top: 5px;">平均风险评分</div>
+                </div>
+                <div>
+                    <div style="color: #ffa726; font-size: 24px; font-weight: bold;">${comparison.current_high_count || 0}</div>
+                    <div style="color: #999; margin-top: 5px;">高风险资产数</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderFactorsData(data) {
+    const { factor_ranking } = data;
+
+    // 渲染风险因子排名
+    renderFactorRankingChart(factor_ranking);
+
+    // 渲染SHAP瀑布图
+    renderShapWaterfallChart(factor_ranking);
+
+    // 渲染因子重要性
+    renderFactorImportanceChart(factor_ranking);
+
+    // 渲染因子趋势
+    renderFactorTrendChart(factor_ranking);
+}
+
+function renderFactorRankingChart(ranking) {
+    const chartContainer = document.getElementById("factorRankingChart");
+    if (!chartContainer) return;
+
+    if (!ranking || ranking.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxContribution = Math.max(...ranking.map(f => f.contribution || 0));
+    const chartHTML = ranking.map(f => {
+        const percentage = maxContribution > 0 ? (f.contribution / maxContribution) * 100 : 0;
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">⚓ ${f.factor_name}</span>
+                    <span style="color: #4fc3f7; font-weight: bold;">${(f.contribution * 100).toFixed(1)}%</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderShapWaterfallChart(ranking) {
+    const chartContainer = document.getElementById("shapWaterfallChart");
+    if (!chartContainer) return;
+
+    if (!ranking || ranking.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    // SHAP瀑布图 - 显示因子对风险评分的正负贡献
+    let baseScore = 50; // 基准评分
+    const chartHTML = `
+        <div style="padding: 20px;">
+            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                <div style="width: 150px; text-align: right; padding-right: 10px; color: #999;">基准评分</div>
+                <div style="flex: 1; height: 30px; background: rgba(79, 195, 247, 0.3); border-radius: 5px; display: flex; align-items: center; padding-left: 10px;">
+                    <span style="color: #4fc3f7; font-weight: bold;">${baseScore.toFixed(1)}</span>
+                </div>
+            </div>
+            ${ranking.map((f, index) => {
+                const contribution = f.contribution * 100;
+                const isPositive = contribution > 0;
+                baseScore += contribution;
+                return `
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="width: 150px; text-align: right; padding-right: 10px; color: #fff; font-size: 13px;">🚢 ${f.factor_name}</div>
+                        <div style="flex: 1; height: 25px; background: rgba(255,255,255,0.05); border-radius: 5px; position: relative; overflow: hidden;">
+                            <div style="position: absolute; left: 50%; width: ${Math.abs(contribution)}%; height: 100%; background: ${isPositive ? 'linear-gradient(90deg, #ff5252, #ff7979)' : 'linear-gradient(90deg, #66bb6a, #81c784)'}; ${isPositive ? 'left: 50%' : 'right: 50%'}; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: #fff; font-size: 11px; font-weight: bold;">${isPositive ? '+' : ''}${contribution.toFixed(1)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+            <div style="display: flex; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="width: 150px; text-align: right; padding-right: 10px; color: #999;">最终评分</div>
+                <div style="flex: 1; height: 35px; background: linear-gradient(90deg, #ffa726, #ffb74d); border-radius: 5px; display: flex; align-items: center; padding-left: 10px;">
+                    <span style="color: #fff; font-weight: bold; font-size: 16px;">${baseScore.toFixed(1)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderFactorImportanceChart(ranking) {
+    const chartContainer = document.getElementById("factorImportanceChart");
+    if (!chartContainer) return;
+
+    if (!ranking || ranking.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxImportance = Math.max(...ranking.map(f => f.importance || 0));
+    const chartHTML = ranking.map(f => {
+        const percentage = maxImportance > 0 ? (f.importance / maxImportance) * 100 : 0;
+        const color = f.importance > 70 ? '#ff5252' : f.importance > 50 ? '#ffa726' : '#66bb6a';
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 13px;">⚡ ${f.factor_name}</span>
+                    <span style="color: ${color}; font-weight: bold;">${f.importance}</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 18px; border-radius: 9px; overflow: hidden;">
+                    <div style="background: ${color}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderFactorTrendChart(ranking) {
+    const chartContainer = document.getElementById("factorTrendChart");
+    if (!chartContainer) return;
+
+    if (!ranking || ranking.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    // 模拟30天趋势数据
+    const days = 30;
+    const chartHTML = `
+        <div style="padding: 15px;">
+            ${ranking.slice(0, 3).map((f, index) => {
+                const color = ['#4fc3f7', '#7e57c2', '#ffa726'][index];
+                return `
+                    <div style="margin-bottom: 20px;">
+                        <div style="color: #fff; font-size: 13px; margin-bottom: 8px;">📊 ${f.factor_name}</div>
+                        <div style="display: flex; align-items: flex-end; height: 60px; gap: 2px;">
+                            ${Array.from({length: days}, (_, i) => {
+                                const value = 30 + Math.random() * 40 + Math.sin(i / 5) * 15;
+                                const height = (value / 70) * 100;
+                                return `<div style="flex: 1; background: ${color}; height: ${height}%; border-radius: 2px 2px 0 0; opacity: ${0.5 + (i / days) * 0.5};"></div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderDistributionData(data) {
+    const { company_distribution, vessel_distribution } = data;
+
+    // 渲染企业风险等级分布
+    renderCompanyDistributionChart(company_distribution);
+
+    // 渲染船舶风险等级分布
+    renderVesselDistributionChart(vessel_distribution);
+
+    // 渲染风险等级迁移
+    renderRiskMigrationChart(company_distribution, vessel_distribution);
+
+    // 渲染行业细分统计
+    renderIndustryBreakdownChart();
+}
+
+function renderCompanyDistributionChart(distribution) {
+    const chartContainer = document.getElementById("companyDistributionChart");
+    if (!chartContainer) return;
+
+    if (!distribution || distribution.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxCount = Math.max(...distribution.map(d => d.count || 0));
+    const levelColors = { 'high': '#ff5252', 'medium': '#ffa726', 'low': '#66bb6a' };
+    const levelLabels = { 'high': '高风险', 'medium': '中风险', 'low': '低风险' };
+    const levelIcons = { 'high': '⚠️', 'medium': '⚡', 'low': '✓' };
+
+    const chartHTML = distribution.map(d => {
+        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+        const color = levelColors[d.risk_level] || '#999';
+        const label = levelLabels[d.risk_level] || d.risk_level;
+        const icon = levelIcons[d.risk_level] || '•';
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${icon} ${label}</span>
+                    <span style="color: ${color}; font-weight: bold;">${d.count}家 (评分: ${(d.avg_score || 0).toFixed(1)})</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: ${color}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderVesselDistributionChart(distribution) {
+    const chartContainer = document.getElementById("vesselDistributionChart");
+    if (!chartContainer) return;
+
+    if (!distribution || distribution.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxCount = Math.max(...distribution.map(d => d.count || 0));
+    const levelColors = { 'high': '#ff5252', 'medium': '#ffa726', 'low': '#66bb6a' };
+    const levelLabels = { 'high': '高风险', 'medium': '中风险', 'low': '低风险' };
+
+    const chartHTML = distribution.map(d => {
+        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+        const color = levelColors[d.risk_level] || '#999';
+        const label = levelLabels[d.risk_level] || d.risk_level;
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">🚢 ${label}</span>
+                    <span style="color: ${color}; font-weight: bold;">${d.count}艘 (评分: ${(d.avg_score || 0).toFixed(1)})</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: ${color}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderRiskMigrationChart(companyDist, vesselDist) {
+    const chartContainer = document.getElementById("riskMigrationChart");
+    if (!chartContainer) return;
+
+    // 模拟风险等级迁移数据
+    const migrationData = [
+        { from: '高风险', to: '高风险', count: 15, color: '#ff5252' },
+        { from: '高风险', to: '中风险', count: 8, color: '#ffa726' },
+        { from: '高风险', to: '低风险', count: 2, color: '#66bb6a' },
+        { from: '中风险', to: '高风险', count: 5, color: '#ff5252' },
+        { from: '中风险', to: '中风险', count: 45, color: '#ffa726' },
+        { from: '中风险', to: '低风险', count: 12, color: '#66bb6a' },
+        { from: '低风险', to: '高风险', count: 1, color: '#ff5252' },
+        { from: '低风险', to: '中风险', count: 8, color: '#ffa726' },
+        { from: '低风险', to: '低风险', count: 120, color: '#66bb6a' }
+    ];
+
+    const chartHTML = `
+        <div style="padding: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                ${migrationData.map(m => {
+                    const opacity = Math.min(m.count / 50, 1);
+                    return `
+                        <div style="background: rgba(79, 195, 247, ${opacity * 0.3}); padding: 15px; border-radius: 8px; border-left: 3px solid ${m.color};">
+                            <div style="color: #999; font-size: 11px; margin-bottom: 5px;">${m.from} → ${m.to}</div>
+                            <div style="color: ${m.color}; font-size: 20px; font-weight: bold;">${m.count}</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderIndustryBreakdownChart() {
+    const chartContainer = document.getElementById("industryBreakdownChart");
+    if (!chartContainer) return;
+
+    // 模拟行业细分数据
+    const industries = [
+        { name: '集装箱运输', count: 156, icon: '📦' },
+        { name: '散货运输', count: 134, icon: '⚓' },
+        { name: '油轮运输', count: 98, icon: '🛢️' },
+        { name: '液化气运输', count: 67, icon: '💨' },
+        { name: '其他', count: 45, icon: '🚢' }
+    ];
+
+    const maxCount = Math.max(...industries.map(i => i.count));
+    const chartHTML = industries.map(ind => {
+        const percentage = (ind.count / maxCount) * 100;
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${ind.icon} ${ind.name}</span>
+                    <span style="color: #7e57c2; font-weight: bold;">${ind.count}家</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #7e57c2, #9575cd); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderOverallData(data) {
+    const { stats, currency_exposure, high_risk_detail } = data;
+    const unit = Detail.unit;
+
+    // 1. 更新统计卡片
+    const totalExposureDetail = document.getElementById("totalExposureDetail");
+    const highRiskExposureDetail = document.getElementById("highRiskExposureDetail");
+    const exposureConcentration = document.getElementById("exposureConcentration");
+    const currencyCount = document.getElementById("currencyCount");
+
+    if (totalExposureDetail) totalExposureDetail.textContent = formatAmount(stats.total_exposure || 0, unit);
+    if (highRiskExposureDetail) highRiskExposureDetail.textContent = formatAmount(stats.high_risk_exposure || 0, unit);
+    if (exposureConcentration) exposureConcentration.textContent = `${(stats.exposure_concentration || 0).toFixed(2)}%`;
+    if (currencyCount) currencyCount.textContent = stats.currency_count || 0;
+
+    // 2. 渲染币种敞口分布
+    renderCurrencyExposureChart(currency_exposure, unit);
+
+    // 3. 渲染敞口集中度分析
+    renderExposureConcentrationChart(stats, unit);
+
+    // 4. 渲染敞口变化趋势
+    renderExposureChangeChart(stats, unit);
+
+    // 5. 渲染高风险敞口明细表格
+    renderHighRiskDetailTable(high_risk_detail, unit);
+}
+
+function renderCurrencyExposureChart(exposure, unit) {
+    const chartContainer = document.getElementById("currencyExposureChart");
+    if (!chartContainer) return;
+
+    if (!exposure || exposure.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const maxAmount = Math.max(...exposure.map(e => e.total_amount || 0));
+    const chartHTML = exposure.map(e => {
+        const percentage = maxAmount > 0 ? (e.total_amount / maxAmount) * 100 : 0;
+
+        return `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #fff; font-size: 14px;">${e.currency}</span>
+                    <span style="color: #4fc3f7; font-weight: bold;">${e.count}条 / ${formatAmount(e.total_amount, unit)}</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderExposureConcentrationChart(stats, unit) {
+    const chartContainer = document.getElementById("exposureConcentrationChart");
+    if (!chartContainer) return;
+
+    // 模拟Top10客户数据
+    const top10Data = [
+        { name: '远洋航运集团', exposure: stats.total_exposure * 0.08, icon: '🚢' },
+        { name: '中海集装箱', exposure: stats.total_exposure * 0.06, icon: '📦' },
+        { name: '招商轮船', exposure: stats.total_exposure * 0.05, icon: '⚓' },
+        { name: '中远海运', exposure: stats.total_exposure * 0.04, icon: '🛢️' },
+        { name: '长荣海运', exposure: stats.total_exposure * 0.04, icon: '🚢' },
+        { name: '马士基航运', exposure: stats.total_exposure * 0.03, icon: '📦' },
+        { name: '地中海航运', exposure: stats.total_exposure * 0.03, icon: '⚓' },
+        { name: '达飞轮船', exposure: stats.total_exposure * 0.03, icon: '🛢️' },
+        { name: '赫伯罗特', exposure: stats.total_exposure * 0.02, icon: '🚢' },
+        { name: '阳明海运', exposure: stats.total_exposure * 0.02, icon: '📦' }
+    ];
+
+    const maxExposure = Math.max(...top10Data.map(d => d.exposure));
+
+    // 分成两列：1-5 和 6-10
+    const leftColumn = top10Data.slice(0, 5);
+    const rightColumn = top10Data.slice(5, 10);
+
+    const renderColumn = (data, startIndex) => {
+        return data.map((d, index) => {
+            const rank = startIndex + index + 1;
+            const percentage = (d.exposure / maxExposure) * 100;
+            const ratio = (d.exposure / stats.total_exposure * 100).toFixed(2);
+
+            return `
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: #fff; font-size: 13px;">${d.icon} ${rank}. ${d.name}</span>
+                        <span style="color: #4fc3f7; font-weight: bold; font-size: 12px;">${formatAmount(d.exposure, unit)} (${ratio}%)</span>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
+                        <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    chartContainer.innerHTML = `
+        <div style="padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>${renderColumn(leftColumn, 0)}</div>
+            <div>${renderColumn(rightColumn, 5)}</div>
+        </div>
+    `;
+}
+
+function renderExposureChangeChart(stats, unit) {
+    const chartContainer = document.getElementById("exposureChangeChart");
+    if (!chartContainer) return;
+
+    // 模拟近30天敞口变化数据
+    const days = 30;
+    const baseExposure = stats.total_exposure;
+    const trendData = Array.from({length: days}, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - 1 - i));
+        const variation = Math.sin(i / 5) * 0.05 + (Math.random() - 0.5) * 0.02;
+        const exposure = baseExposure * (1 + variation);
+        return {
+            date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+            exposure: exposure
+        };
+    });
+
+    const maxExposure = Math.max(...trendData.map(d => d.exposure));
+    const minExposure = Math.min(...trendData.map(d => d.exposure));
+    const range = maxExposure - minExposure || 1;
+
+    // 计算日期标签显示间隔
+    const labelInterval = Math.max(1, Math.ceil(days / 10));
+
+    const chartHTML = `
+        <div style="width: 100%; height: 100%; padding: 10px; box-sizing: border-box;">
+            <svg viewBox="0 0 1000 300" style="width: 100%; height: 100%;" preserveAspectRatio="xMidYMid meet">
+                <!-- 背景网格线 -->
+                ${[0, 25, 50, 75, 100].map(percent => {
+                    const y = 40 + (percent / 100) * 200;
+                    return `<line x1="50" y1="${y}" x2="950" y2="${y}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+                }).join('')}
+
+                <!-- 渐变填充区域 -->
+                <defs>
+                    <linearGradient id="exposureChangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#4fc3f7;stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:#4fc3f7;stop-opacity:0" />
+                    </linearGradient>
+                </defs>
+                <polygon points="50,240 ${trendData.map((d, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((d.exposure - minExposure) / range) * 200;
+                    return `${x},${y}`;
+                }).join(' ')} 950,240" fill="url(#exposureChangeGradient)"/>
+
+                <!-- 折线 -->
+                <polyline points="${trendData.map((d, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((d.exposure - minExposure) / range) * 200;
+                    return `${x},${y}`;
+                }).join(' ')}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+                <!-- 数据点和日期标签 -->
+                ${trendData.map((d, i) => {
+                    const x = 50 + (i / (trendData.length - 1)) * 900;
+                    const y = 40 + 200 - ((d.exposure - minExposure) / range) * 200;
+                    const showLabel = i % labelInterval === 0 || i === trendData.length - 1;
+
+                    return `
+                        <circle cx="${x}" cy="${y}" r="4" fill="#4fc3f7"/>
+                        ${showLabel ? `
+                            <line x1="${x}" y1="240" x2="${x}" y2="250" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+                            <text x="${x}" y="270" text-anchor="middle" fill="#999" font-size="11">${d.date.substring(5)}</text>
+                        ` : ''}
+                    `;
+                }).join('')}
+            </svg>
+
+            <!-- 数值说明 -->
+            <div style="margin-top: 10px; text-align: center; color: #999; font-size: 13px;">
+                <span style="color: #4fc3f7;">当前: ${formatAmount(trendData[trendData.length - 1].exposure, unit)}</span>
+                <span style="margin: 0 20px;">|</span>
+                <span>最高: ${formatAmount(maxExposure, unit)}</span>
+                <span style="margin: 0 20px;">|</span>
+                <span>最低: ${formatAmount(minExposure, unit)}</span>
+            </div>
+        </div>
+    `;
+
+    chartContainer.innerHTML = chartHTML;
+}
+
+function renderHighRiskDetailTable(detail, unit) {
+    const tableBody = document.getElementById("overallTableBody");
+    if (!tableBody) return;
+
+    if (!detail || detail.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">暂无数据</td></tr>';
+        return;
+    }
+
+    const rows = detail.map((item, index) => {
+        const riskBadgeClass = 'high';
+        const riskLabel = '高风险';
+
+        return `
+            <tr>
+                <td>${item.company_name || '-'}</td>
+                <td>${item.vessel_name || '-'}</td>
+                <td>${formatAmount(item.outstanding_amount || 0, unit)}</td>
+                <td>${item.currency || '-'}</td>
+                <td><span class="risk-badge ${riskBadgeClass}">${riskLabel}</span></td>
+                <td>${(item.exposure_ratio || 0).toFixed(2)}%</td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.innerHTML = rows;
+}
+
+// 生成NPL模拟数据 -- 具体页面已弃用
+function generateMockNplData() {
+    const unit = Detail.unit;
+
+    // 模拟不良资产数据
+    const mockAssets = [
+        { company_name: '远洋运输集团', contract_no: 'NPL-2024-001', outstanding_amount: 85000000, overdue_days: 180, npl_classification: '损失', recognition_date: '2024-08-15' },
+        { company_name: '中海航运有限公司', contract_no: 'NPL-2024-002', outstanding_amount: 62000000, overdue_days: 150, npl_classification: '可疑', recognition_date: '2024-09-01' },
+        { company_name: '招商轮船股份', contract_no: 'NPL-2023-089', outstanding_amount: 48000000, overdue_days: 210, npl_classification: '损失', recognition_date: '2023-12-20' },
+        { company_name: '长荣海运', contract_no: 'NPL-2024-003', outstanding_amount: 35000000, overdue_days: 120, npl_classification: '次级', recognition_date: '2024-10-10' },
+        { company_name: '马士基航运', contract_no: 'NPL-2024-004', outstanding_amount: 28000000, overdue_days: 95, npl_classification: '关注', recognition_date: '2024-11-05' },
+        { company_name: '地中海航运', contract_no: 'NPL-2024-005', outstanding_amount: 22000000, overdue_days: 165, npl_classification: '可疑', recognition_date: '2024-09-20' },
+        { company_name: '达飞轮船', contract_no: 'NPL-2023-078', outstanding_amount: 19000000, overdue_days: 240, npl_classification: '损失', recognition_date: '2023-10-15' },
+        { company_name: '赫伯罗特', contract_no: 'NPL-2024-006', outstanding_amount: 15000000, overdue_days: 110, npl_classification: '次级', recognition_date: '2024-10-25' }
+    ];
+
+    const totalNplAmount = mockAssets.reduce((sum, a) => sum + a.outstanding_amount, 0);
+    const totalAmount = totalNplAmount * 5; // 假设不良率为20%
+
+    // 模拟分类统计
+    const classifications = [
+        { classification: '损失', count: 3, total_amount: 152000000 },
+        { classification: '可疑', count: 2, total_amount: 84000000 },
+        { classification: '次级', count: 2, total_amount: 63000000 },
+        { classification: '关注', count: 1, total_amount: 28000000 }
+    ];
+
+    // 模拟12个月趋势
+    const trend = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const baseCount = 5 + Math.floor(Math.random() * 3);
+        const baseAmount = 200000000 + Math.random() * 100000000;
+        trend.push({
+            month: month,
+            npl_count: baseCount,
+            npl_amount: baseAmount
+        });
+    }
+
+    return {
+        success: true,
+        base_date: now.toISOString().split('T')[0],
+        range: '30d',
+        currency: Detail.currency,
+        stats: {
+            npl_count: mockAssets.length,
+            npl_amount: totalNplAmount,
+            npl_rate: (totalNplAmount / totalAmount * 100).toFixed(2),
+            provision_rate: 150.0
+        },
+        npl_assets: mockAssets,
+        npl_classification: classifications,
+        npl_trend: trend
+    };
+}
+
+async function fetchDetailData(timeRange = '30d', customerId = null) {
     if (!Detail.token) {
         showDetailToast("请先登录", true);
         window.location.href = "/";
         return;
     }
 
-    // 暂时显示开发中提示
-    showDetailToast("该详情页面正在开发中，数据接口尚未实现", false);
+    // 对所有详情页类型实现真实API调用
+    const supportedTypes = ["credit", "alerts", "vessels", "trend", "factors", "distribution", "overall"];
+    if (supportedTypes.includes(Detail.type)) {
+        try {
+            const apiEndpoint = `/api/detail/${Detail.type}`;
+            const requestBody = {
+                currency: Detail.currency,
+                range: timeRange
+            };
 
-    // TODO: 后续实现具体的API调用
-    // const response = await fetch(`/api/detail/${Detail.type}`, {
-    //     method: "POST",
-    //     headers: {
-    //         "Content-Type": "application/json",
-    //         "Authorization": `Bearer ${Detail.token}`
-    //     },
-    //     body: JSON.stringify({
-    //         currency: Detail.currency,
-    //         unit: Detail.unit
-    //     })
-    // });
+            // 如果是因子页面且指定了客户ID，添加到请求中
+            if (Detail.type === 'factors' && customerId) {
+                requestBody.customer_id = parseInt(customerId);
+                console.log('发送因子请求，客户ID:', customerId, '请求体:', requestBody);
+            }
+
+            const response = await fetch(apiEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${Detail.token}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+            console.log('收到响应数据:', data);
+
+            if (data.success === false) {
+                showDetailToast(data.msg || "数据加载失败", true);
+                return;
+            }
+
+            // 根据类型渲染数据
+            const renderFunctions = {
+                "credit": renderCreditData,
+                "alerts": renderAlertsData,
+                "vessels": renderVesselsData,
+                "trend": (data) => renderTrendData(data, timeRange),
+                "factors": renderFactorsData,
+                "distribution": renderDistributionData,
+                "overall": renderOverallData
+            };
+
+            if (renderFunctions[Detail.type]) {
+                renderFunctions[Detail.type](data);
+            }
+            showDetailToast("数据加载成功！", false);
+        } catch (error) {
+            console.error('数据加载错误:', error);
+            showDetailToast("数据加载失败: " + error.message, true);
+        }
+    } else {
+        // 其他详情页面暂时显示开发中提示
+        showDetailToast("该详情页面正在开发中", false);
+    }
 }
 
 function initDetailPage() {
@@ -555,6 +1996,19 @@ function bootDetail() {
 
     // 初始化详情页面
     initDetailPage();
+
+    // 绑定趋势页面的时间范围筛选器
+    if (Detail.type === 'trend') {
+        const applyTrendFilterBtn = document.getElementById("applyTrendFilter");
+        if (applyTrendFilterBtn) {
+            applyTrendFilterBtn.addEventListener("click", () => {
+                const rangeSelect = document.getElementById("trendRangeFilter");
+                const selectedRange = rangeSelect ? rangeSelect.value : '30d';
+                console.log('选择的时间范围:', selectedRange);
+                fetchDetailData(selectedRange);
+            });
+        }
+    }
 }
 
 window.addEventListener("load", () => {

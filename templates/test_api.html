@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试风险因子API</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .result { background: #000; padding: 10px; margin: 10px 0; border: 1px solid #0f0; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>风险因子API测试</h1>
+    <button onclick="testLogin()">1. 登录</button>
+    <button onclick="testDashboard()">2. 测试Dashboard API</button>
+    <button onclick="testRiskFactors()">3. 测试风险因子API</button>
+    <div id="result" class="result"></div>
+
+    <script>
+        let token = localStorage.getItem('silvernav_token');
+        
+        async function testLogin() {
+            const result = document.getElementById('result');
+            result.innerHTML = '正在登录...';
+            
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                });
+                const data = await res.json();
+                
+                if (data.token) {
+                    token = data.token;
+                    localStorage.setItem('silvernav_token', token);
+                    result.innerHTML = '✅ 登录成功！Token: ' + token.substring(0, 20) + '...';
+                } else {
+                    result.innerHTML = '❌ 登录失败: ' + JSON.stringify(data);
+                }
+            } catch (e) {
+                result.innerHTML = '❌ 错误: ' + e.message;
+            }
+        }
+        
+        async function testDashboard() {
+            const result = document.getElementById('result');
+            result.innerHTML = '正在请求Dashboard API...';
+            
+            if (!token) {
+                result.innerHTML = '❌ 请先登录！';
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/dashboard', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        base_date: '2026-02-10',
+                        range: 'today',
+                        currency: 'CNY'
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.risk_factors) {
+                    result.innerHTML = '✅ Dashboard API成功！<br>' +
+                        '风险因子数量: ' + data.risk_factors.length + '<br>' +
+                        '数据: <pre>' + JSON.stringify(data.risk_factors, null, 2) + '</pre>';
+                } else {
+                    result.innerHTML = '❌ 没有risk_factors字段<br>' +
+                        '返回字段: ' + Object.keys(data).join(', ');
+                }
+            } catch (e) {
+                result.innerHTML = '❌ 错误: ' + e.message;
+            }
+        }
+        
+        async function testRiskFactors() {
+            const result = document.getElementById('result');
+            result.innerHTML = '正在请求风险因子API...';
+            
+            if (!token) {
+                result.innerHTML = '❌ 请先登录！';
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/dashboard/risk-factors', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        base_date: '2026-02-10',
+                        range: 'today',
+                        currency: 'CNY'
+                    })
+                });
+                const data = await res.json();
+                
+                result.innerHTML = '✅ 风险因子API响应：<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (e) {
+                result.innerHTML = '❌ 错误: ' + e.message;
+            }
+        }
+        
+        if (token) {
+            document.getElementById('result').innerHTML = '已有Token: ' + token.substring(0, 20) + '...';
+        }
+    </script>
+</body>
+</html>

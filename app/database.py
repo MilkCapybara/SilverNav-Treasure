@@ -11,11 +11,20 @@ except ImportError:
     RealDictCursor = None
     SimpleConnectionPool = None
 
+try:
+    from pymongo import MongoClient
+    from pymongo.errors import ConnectionFailure
+except ImportError:
+    MongoClient = None
+    ConnectionFailure = None
+
 from .config import settings
 
 
-ADMIN_POOL: Optional[SimpleConnectionPool] = None
-READ_POOL: Optional[SimpleConnectionPool] = None
+ADMIN_POOL: Optional["SimpleConnectionPool"] = None
+READ_POOL: Optional["SimpleConnectionPool"] = None
+MONGO_CLIENT: Optional["MongoClient"] = None
+MONGO_CLIENT: Optional[MongoClient] = None
 
 
 def _require_db() -> None:
@@ -75,10 +84,54 @@ def init_pools() -> None:
 
 def close_pools() -> None:
     """关闭数据库连接池"""
+    global ADMIN_POOL, READ_POOL, MONGO_CLIENT
     if ADMIN_POOL:
         ADMIN_POOL.closeall()
     if READ_POOL:
         READ_POOL.closeall()
+    if MONGO_CLIENT:
+        MONGO_CLIENT.close()
+
+
+def init_mongo() -> None:
+    """初始化MongoDB连接"""
+    global MONGO_CLIENT
+    if MongoClient is None:
+        raise RuntimeError("pymongo未安装，请运行: pip install pymongo")
+
+    try:
+        # 构建MongoDB连接URI
+        mongo_uri = (
+            f"mongodb://{settings.mongo_user}:{settings.mongo_password}"
+            f"@{settings.mongo_host}:{settings.mongo_port}"
+            f"/{settings.mongo_db}?authSource={settings.mongo_auth_source}"
+        )
+
+        MONGO_CLIENT = MongoClient(
+            mongo_uri,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=30000,
+            maxPoolSize=10,
+            minPoolSize=1
+        )
+
+        # 测试连接
+        MONGO_CLIENT.admin.command('ping')
+        print(f"✅ MongoDB连接成功: {settings.mongo_host}:{settings.mongo_port}/{settings.mongo_db}")
+    except Exception as e:
+        print(f"❌ MongoDB连接失败: {e}")
+        MONGO_CLIENT = None
+        raise
+
+
+def get_mongo_db():
+    """获取MongoDB数据库实例"""
+    if MONGO_CLIENT is None:
+        init_mongo()
+    if MONGO_CLIENT is None:
+        raise RuntimeError("MongoDB未连接")
+    return MONGO_CLIENT[settings.mongo_db]
 
 
 def query_one(conn, sql: str, params: tuple) -> Dict[str, Any]:

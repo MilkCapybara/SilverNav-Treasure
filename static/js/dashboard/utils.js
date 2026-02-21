@@ -7,7 +7,7 @@ function showDashToast(msg, isError = false) {
     window.clearTimeout(showDashToast.timer);
     showDashToast.timer = window.setTimeout(() => {
         toast.classList.remove("show");
-    }, 1800);
+    }, 1000);
 }
 
 function getUnitLabel(unit) {

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银航宝 · 船舶行为分析</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+    <link rel="stylesheet" href="/static/css/behavior.css">
+    <!-- Leaflet.js 地图库 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="dashboard-body behavior-page">
+    <div class="skyline" aria-hidden="true"></div>
+    <div class="grid-glow" aria-hidden="true"></div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <button class="back-btn" id="backBtn" data-tip="返回总览大屏">返回大屏</button>
+        </div>
+        <div class="top-center">
+            <h1>🚢 船舶行为分析</h1>
+            <p id="behaviorTitle">AIS轨迹追踪与异常检测</p>
+        </div>
+        <div class="top-right">
+            <div class="clock" id="cnClock">--</div>
+            <div class="meta">
+                <span class="tag">数据源：MongoDB</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="behavior-content">
+        <!-- 统计卡片 -->
+        <section class="behavior-stats">
+            <div class="stat-card">
+                <div class="stat-label">总轨迹点数</div>
+                <div class="stat-value" id="totalTracks">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">船舶数量</div>
+                <div class="stat-value" id="vesselCount">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">异常停泊次数</div>
+                <div class="stat-value" id="anomalyCount">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">数据时间跨度</div>
+                <div class="stat-value" id="timeSpan">--</div>
+            </div>
+        </section>
+
+        <!-- 船舶选择器 -->
+        <section class="card behavior-card">
+            <h3>🔍 船舶轨迹查询</h3>
+            <div class="behavior-filters">
+                <div class="filter-group">
+                    <label>选择船舶：</label>
+                    <select id="vesselSelect">
+                        <option value="">加载中...</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>时间范围：</label>
+                    <select id="timeRangeSelect">
+                        <option value="7d">近7天</option>
+                        <option value="30d" selected>近30天</option>
+                        <option value="90d">近90天</option>
+                        <option value="all">全部</option>
+                    </select>
+                </div>
+                <button class="filter-btn" id="loadTrackBtn">加载轨迹</button>
+                <button class="filter-btn" id="clearTrackBtn">清除轨迹</button>
+            </div>
+        </section>
+
+        <!-- 地图容器 -->
+        <section class="card behavior-card">
+            <h3>🗺️ 轨迹地图</h3>
+            <div id="mapContainer" style="height: 500px; border-radius: 8px; overflow: hidden;"></div>
+            <div class="map-legend">
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #3cebdc;"></span>
+                    <span>正常航行</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #ff5a7a;"></span>
+                    <span>异常停泊</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #ffd65c;"></span>
+                    <span>当前位置</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 船舶类型分布 -->
+        <section class="card behavior-card">
+            <h3>📊 船舶类型分布</h3>
+            <div id="shipTypeChart" class="chart-container"></div>
+        </section>
+
+        <!-- 轨迹详情表格 -->
+        <section class="card behavior-card">
+            <h3>📋 轨迹详情</h3>
+            <div class="table-container">
+                <table class="behavior-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>位置（经度/纬度）</th>
+                            <th>速度（节）</th>
+                            <th>航向（度）</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trackTableBody">
+                        <tr><td colspan="5" style="text-align: center; padding: 40px;">请选择船舶并加载轨迹</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast" id="behaviorToast" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/dashboard/state.js"></script>
+    <script src="/static/js/dashboard/utils.js"></script>
+    <script src="/static/js/behavior.js"></script>
+</body>
+</html>

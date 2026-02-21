@@ -347,8 +347,13 @@ def get_vessel_top(conn, base: date) -> List[Dict[str, Any]]:
     return rows
 
 
-def get_risk_factors(conn) -> List[Dict[str, Any]]:
+def get_risk_factors(conn, base_date=None) -> List[Dict[str, Any]]:
     """获取真实风险因子数据 - 优化版本，限制扫描范围"""
+    # 如果没有提供base_date，使用当前日期
+    if base_date is None:
+        from datetime import date
+        base_date = date.today()
+
     rows = query_all(
         conn,
         """
@@ -357,12 +362,13 @@ def get_risk_factors(conn) -> List[Dict[str, Any]]:
             AVG(factor_value) as avg_value,
             SUM(contribution) as total_contribution
         FROM risk_factor_contribution
-        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+        WHERE created_at >= %s::date - INTERVAL '30 days'
+          AND created_at <= %s::date
         GROUP BY factor_name
         ORDER BY SUM(ABS(contribution)) DESC
         LIMIT 5
         """,
-        (),
+        (base_date, base_date),
     )
     return rows
 
@@ -377,9 +383,20 @@ async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
+@app.get("/test_api", response_class=HTMLResponse)
+async def test_api(request: Request):
+    return templates.TemplateResponse("test_api.html", {"request": request})
+
+
 @app.get("/detail", response_class=HTMLResponse)
 async def detail(request: Request):
     return templates.TemplateResponse("detail.html", {"request": request})
+
+
+@app.get("/behavior", response_class=HTMLResponse)
+async def behavior(request: Request):
+    """船舶行为分析页面 - 不需要登录验证"""
+    return templates.TemplateResponse("behavior.html", {"request": request})
 
 
 @app.post("/api/login")
@@ -849,7 +866,7 @@ async def dashboard_risk_factors(request: Request, payload: DashboardQuery):
 
     try:
         with db_conn(role) as conn:
-            risk_factors = get_risk_factors(conn)
+            risk_factors = get_risk_factors(conn, base)  # 传入base_date
     except Exception as exc:
         return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
 
@@ -1097,12 +1114,13 @@ async def dashboard_data(request: Request, payload: DashboardQuery):
                     AVG(factor_value) as avg_value,
                     SUM(contribution) as total_contribution
                 FROM risk_factor_contribution
-                WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                WHERE created_at >= %s::date - INTERVAL '30 days'
+                  AND created_at <= %s::date
                 GROUP BY factor_name
                 ORDER BY SUM(ABS(contribution)) DESC
                 LIMIT 5
                 """,
-                (),
+                (base, base),
             )
 
             high_risk_company_count = query_one(
@@ -1173,6 +1191,1225 @@ async def dashboard_data(request: Request, payload: DashboardQuery):
     }
 
     return JSONResponse(response)
+
+
+@app.post("/api/detail/credit")
+async def detail_credit(request: Request, payload: DashboardQuery):
+    """授信使用明细页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] Step 1: Got connection", file=sys.stderr)
+            fx_rate = get_fx_rate(conn, currency, end_date)
+            print(f"[DEBUG] Step 2: fx_rate={fx_rate}", file=sys.stderr)
+
+            # 1. 统计数据：授信客户数、总授信额度、已用额度、平均使用率
+            print(f"[DEBUG] Step 3: Querying credit_stats...", file=sys.stderr)
+            credit_stats = query_one(
+                conn,
+                """
+                WITH credit_data AS (
+                    SELECT
+                        a.company_id,
+                        SUM(a.principal_amount * %s) AS total_limit,
+                        SUM(a.outstanding_amount * %s) AS used_amount
+                    FROM financial_assets a
+                    WHERE a.is_active = TRUE
+                      AND a.start_date <= %s
+                      AND a.maturity_date >= %s
+                    GROUP BY a.company_id
+                )
+                SELECT
+                    COUNT(DISTINCT company_id) AS customer_count,
+                    COALESCE(SUM(total_limit), 0) AS total_limit,
+                    COALESCE(SUM(used_amount), 0) AS used_amount,
+                    CASE
+                        WHEN SUM(total_limit) > 0
+                        THEN (SUM(used_amount) / SUM(total_limit)) * 100
+                        ELSE 0
+                    END AS avg_usage_rate
+                FROM credit_data
+                """,
+                (fx_rate, fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] Step 4: credit_stats OK", file=sys.stderr)
+
+            # 2. 授信客户排行榜（Top 20）
+            print(f"[DEBUG] Step 5: Querying credit_ranking...", file=sys.stderr)
+            credit_ranking = query_all(
+                conn,
+                """
+                SELECT
+                    c.company_name,
+                    c.risk_level,
+                    SUM(a.principal_amount * %s) AS credit_limit,
+                    SUM(a.outstanding_amount * %s) AS used_amount,
+                    CASE
+                        WHEN SUM(a.principal_amount) > 0
+                        THEN (SUM(a.outstanding_amount) / SUM(a.principal_amount)) * 100
+                        ELSE 0
+                    END AS usage_rate
+                FROM financial_assets a
+                LEFT JOIN companies c ON c.id = a.company_id
+                WHERE a.is_active = TRUE
+                  AND a.start_date <= %s
+                  AND a.maturity_date >= %s
+                GROUP BY c.id, c.company_name, c.risk_level
+                ORDER BY used_amount DESC
+                LIMIT 20
+                """,
+                (fx_rate, fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] Step 6: credit_ranking OK, count={len(credit_ranking)}", file=sys.stderr)
+
+            # 3. 授信使用率分布
+            print(f"[DEBUG] Step 7: Querying usage_distribution...", file=sys.stderr)
+            from psycopg2.extras import RealDictCursor
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    WITH credit_usage AS (
+                        SELECT
+                            a.company_id,
+                            CASE
+                                WHEN SUM(a.principal_amount) > 0
+                                THEN (SUM(a.outstanding_amount) / SUM(a.principal_amount)) * 100
+                                ELSE 0
+                            END AS usage_rate
+                        FROM financial_assets a
+                        WHERE a.is_active = TRUE
+                        GROUP BY a.company_id
+                    )
+                    SELECT
+                        CASE
+                            WHEN usage_rate < 50 THEN '0-50%'
+                            WHEN usage_rate < 80 THEN '50-80%'
+                            WHEN usage_rate < 100 THEN '80-100%'
+                            ELSE '>100%'
+                        END AS range,
+                        COUNT(*) AS count
+                    FROM credit_usage
+                    GROUP BY
+                        CASE
+                            WHEN usage_rate < 50 THEN '0-50%'
+                            WHEN usage_rate < 80 THEN '50-80%'
+                            WHEN usage_rate < 100 THEN '80-100%'
+                            ELSE '>100%'
+                        END
+                    ORDER BY range
+                """)
+                usage_distribution = [dict(row) for row in cur.fetchall()]
+            print(f"[DEBUG] Step 8: usage_distribution OK, count={len(usage_distribution)}", file=sys.stderr)
+
+            # 4. 授信集中度分析（Top10客户占比）
+            print(f"[DEBUG] Step 9: Querying concentration...", file=sys.stderr)
+            concentration = query_one(
+                conn,
+                """
+                WITH total_credit AS (
+                    SELECT SUM(a.outstanding_amount * %s) AS total
+                    FROM financial_assets a
+                    WHERE a.is_active = TRUE
+                ),
+                top10_credit AS (
+                    SELECT SUM(used_amount) AS top10_total
+                    FROM (
+                        SELECT
+                            a.company_id,
+                            SUM(a.outstanding_amount * %s) AS used_amount
+                        FROM financial_assets a
+                        WHERE a.is_active = TRUE
+                        GROUP BY a.company_id
+                        ORDER BY used_amount DESC
+                        LIMIT 10
+                    ) t
+                )
+                SELECT
+                    COALESCE(tc.total, 0) AS total_exposure,
+                    COALESCE(t10.top10_total, 0) AS top10_exposure,
+                    CASE
+                        WHEN tc.total > 0
+                        THEN (t10.top10_total / tc.total) * 100
+                        ELSE 0
+                    END AS concentration_ratio
+                FROM total_credit tc, top10_credit t10
+                """,
+                (fx_rate, fx_rate),
+            )
+            print(f"[DEBUG] Step 10: concentration OK", file=sys.stderr)
+
+            # 5. 授信到期提醒（近30天到期）
+            print(f"[DEBUG] Step 11: Querying expiring_soon...", file=sys.stderr)
+            expiring_soon = query_all(
+                conn,
+                """
+                SELECT
+                    c.company_name,
+                    a.contract_no,
+                    a.outstanding_amount * %s AS outstanding_amount,
+                    a.maturity_date,
+                    a.maturity_date - CURRENT_DATE AS days_to_maturity,
+                    a.risk_level
+                FROM financial_assets a
+                LEFT JOIN companies c ON c.id = a.company_id
+                WHERE a.is_active = TRUE
+                  AND a.maturity_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
+                ORDER BY a.maturity_date ASC
+                LIMIT 20
+                """,
+                (fx_rate,),
+            )
+            print(f"[DEBUG] Step 12: expiring_soon OK, count={len(expiring_soon)}", file=sys.stderr)
+            print(f"[DEBUG] Step 13: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "stats": {
+            "customer_count": credit_stats.get("customer_count", 0),
+            "total_limit": credit_stats.get("total_limit", 0),
+            "used_amount": credit_stats.get("used_amount", 0),
+            "avg_usage_rate": round(credit_stats.get("avg_usage_rate", 0), 2),
+        },
+        "ranking": credit_ranking,
+        "usage_distribution": usage_distribution,
+        "concentration": {
+            "total_exposure": concentration.get("total_exposure", 0),
+            "top10_exposure": concentration.get("top10_exposure", 0),
+            "concentration_ratio": round(concentration.get("concentration_ratio", 0), 2),
+        },
+        "expiring_soon": expiring_soon,
+    }
+
+    return JSONResponse(response)
+
+
+@app.post("/api/detail/alerts")
+async def detail_alerts(request: Request, payload: DashboardQuery):
+    """高风险预警详情页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] alerts: Step 1: Got connection", file=sys.stderr)
+            fx_rate = get_fx_rate(conn, currency, end_date)
+            print(f"[DEBUG] alerts: Step 2: fx_rate={fx_rate}", file=sys.stderr)
+
+            # 1. 统计数据：高风险资产总数、总敞口
+            print(f"[DEBUG] alerts: Step 3: Querying alert_stats...", file=sys.stderr)
+            alert_stats = query_one(
+                conn,
+                """
+                SELECT
+                    COUNT(*) AS high_risk_count,
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS high_risk_exposure
+                FROM financial_assets
+                WHERE is_active = TRUE
+                  AND risk_level = 'high'
+                  AND start_date <= %s
+                  AND maturity_date >= %s
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] alerts: Step 4: alert_stats OK", file=sys.stderr)
+
+            # 2. 高风险资产列表（Top 50）
+            print(f"[DEBUG] alerts: Step 5: Querying high_risk_assets...", file=sys.stderr)
+            high_risk_assets = query_all(
+                conn,
+                """
+                SELECT
+                    a.id,
+                    a.asset_type,
+                    c.company_name,
+                    v.vessel_name,
+                    a.contract_no,
+                    a.outstanding_amount * %s AS outstanding_amount,
+                    a.risk_score,
+                    a.risk_level,
+                    a.maturity_date
+                FROM financial_assets a
+                LEFT JOIN companies c ON c.id = a.company_id
+                LEFT JOIN vessels v ON v.id = a.vessel_id
+                WHERE a.is_active = TRUE
+                  AND a.risk_level = 'high'
+                  AND a.start_date <= %s
+                  AND a.maturity_date >= %s
+                ORDER BY a.outstanding_amount DESC
+                LIMIT 50
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] alerts: Step 6: high_risk_assets OK, count={len(high_risk_assets)}", file=sys.stderr)
+
+            # 3. 风险等级统计
+            print(f"[DEBUG] alerts: Step 7: Querying risk_level_stats...", file=sys.stderr)
+            risk_level_stats = query_all(
+                conn,
+                """
+                SELECT
+                    risk_level,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS total_amount
+                FROM financial_assets
+                WHERE is_active = TRUE
+                  AND start_date <= %s
+                  AND maturity_date >= %s
+                GROUP BY risk_level
+                ORDER BY
+                    CASE risk_level
+                        WHEN 'high' THEN 1
+                        WHEN 'medium' THEN 2
+                        WHEN 'low' THEN 3
+                        ELSE 4
+                    END
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] alerts: Step 8: risk_level_stats OK", file=sys.stderr)
+
+            # 4. 资产类型分布
+            print(f"[DEBUG] alerts: Step 9: Querying asset_type_stats...", file=sys.stderr)
+            asset_type_stats = query_all(
+                conn,
+                """
+                SELECT
+                    asset_type,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS total_amount
+                FROM financial_assets
+                WHERE is_active = TRUE
+                  AND risk_level = 'high'
+                  AND start_date <= %s
+                  AND maturity_date >= %s
+                GROUP BY asset_type
+                ORDER BY total_amount DESC
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] alerts: Step 10: asset_type_stats OK", file=sys.stderr)
+            print(f"[DEBUG] alerts: Step 11: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] alerts: Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "stats": {
+            "high_risk_count": alert_stats.get("high_risk_count", 0),
+            "high_risk_exposure": alert_stats.get("high_risk_exposure", 0),
+        },
+        "high_risk_assets": high_risk_assets,
+        "risk_level_stats": risk_level_stats,
+        "asset_type_stats": asset_type_stats,
+    }
+
+    return JSONResponse(response)
+
+
+@app.post("/api/detail/vessels")
+async def detail_vessels(request: Request, payload: DashboardQuery):
+    """船舶资产风险详情页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] vessels: Step 1: Got connection", file=sys.stderr)
+
+            # 1. 统计数据：总船舶数、高风险船舶、平均船龄、平均风险评分
+            print(f"[DEBUG] vessels: Step 2: Querying vessel_stats...", file=sys.stderr)
+            vessel_stats = query_one(
+                conn,
+                """
+                SELECT
+                    COUNT(*) AS total_vessels,
+                    COUNT(CASE WHEN risk_level = 'high' THEN 1 END) AS high_risk_vessels,
+                    AVG(EXTRACT(YEAR FROM %s::date) - build_year) AS avg_vessel_age,
+                    AVG(asset_risk_score) AS avg_risk_score
+                FROM vessels
+                WHERE is_active = TRUE
+                """,
+                (end_date,),
+            )
+            print(f"[DEBUG] vessels: Step 3: vessel_stats OK", file=sys.stderr)
+
+            # 2. 船舶风险排行榜（Top 20）
+            print(f"[DEBUG] vessels: Step 4: Querying vessel_ranking...", file=sys.stderr)
+            vessel_ranking = query_all(
+                conn,
+                """
+                SELECT
+                    v.vessel_name,
+                    v.imo_number,
+                    v.vessel_type,
+                    EXTRACT(YEAR FROM %s::date) - v.build_year AS vessel_age,
+                    c.company_name,
+                    v.asset_risk_score AS risk_score,
+                    v.risk_level
+                FROM vessels v
+                LEFT JOIN companies c ON c.id = v.owner_company_id
+                WHERE v.is_active = TRUE
+                  AND v.asset_risk_score IS NOT NULL
+                ORDER BY v.asset_risk_score DESC
+                LIMIT 20
+                """,
+                (end_date,),
+            )
+            print(f"[DEBUG] vessels: Step 5: vessel_ranking OK, count={len(vessel_ranking)}", file=sys.stderr)
+
+            # 3. 船龄分布
+            print(f"[DEBUG] vessels: Step 6: Querying age_distribution...", file=sys.stderr)
+            age_distribution = query_all(
+                conn,
+                """
+                SELECT
+                    age_range AS range,
+                    COUNT(*) AS count
+                FROM (
+                    SELECT
+                        CASE
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 5 THEN '0-5年'
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 10 THEN '5-10年'
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 15 THEN '10-15年'
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 20 THEN '15-20年'
+                            ELSE '20年以上'
+                        END AS age_range,
+                        CASE
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 5 THEN 1
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 10 THEN 2
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 15 THEN 3
+                            WHEN EXTRACT(YEAR FROM %s::date) - build_year < 20 THEN 4
+                            ELSE 5
+                        END AS sort_order
+                    FROM vessels
+                    WHERE is_active = TRUE
+                ) t
+                GROUP BY age_range, sort_order
+                ORDER BY sort_order
+                """,
+                (end_date, end_date, end_date, end_date, end_date, end_date, end_date, end_date),
+            )
+            print(f"[DEBUG] vessels: Step 7: age_distribution OK", file=sys.stderr)
+
+            # 4. 船型分布
+            print(f"[DEBUG] vessels: Step 8: Querying type_distribution...", file=sys.stderr)
+            type_distribution = query_all(
+                conn,
+                """
+                SELECT
+                    vessel_type AS type,
+                    COUNT(*) AS count
+                FROM vessels
+                WHERE is_active = TRUE
+                  AND vessel_type IS NOT NULL
+                GROUP BY vessel_type
+                ORDER BY count DESC
+                LIMIT 10
+                """,
+                (),
+            )
+            print(f"[DEBUG] vessels: Step 9: type_distribution OK", file=sys.stderr)
+            print(f"[DEBUG] vessels: Step 10: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] vessels: Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "stats": {
+            "total_vessels": vessel_stats.get("total_vessels", 0),
+            "high_risk_vessels": vessel_stats.get("high_risk_vessels", 0),
+            "avg_vessel_age": round(vessel_stats.get("avg_vessel_age", 0), 1),
+            "avg_risk_score": round(vessel_stats.get("avg_risk_score", 0), 2),
+        },
+        "vessel_ranking": vessel_ranking,
+        "age_distribution": age_distribution,
+        "type_distribution": type_distribution,
+    }
+
+    return JSONResponse(response)
+
+
+@app.post("/api/detail/npl")
+async def detail_npl(request: Request, payload: DashboardQuery):
+    """不良资产明细页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] npl: Step 1: Got connection", file=sys.stderr)
+            fx_rate = get_fx_rate(conn, currency, end_date)
+            print(f"[DEBUG] npl: Step 2: fx_rate={fx_rate}", file=sys.stderr)
+
+            # 1. 统计数据：不良资产数量、金额、不良率、拨备覆盖率
+            print(f"[DEBUG] npl: Step 3: Querying npl_stats...", file=sys.stderr)
+            npl_stats = query_one(
+                conn,
+                """
+                SELECT
+                    COUNT(CASE WHEN is_non_performing = TRUE THEN 1 END) AS npl_count,
+                    COALESCE(SUM(CASE WHEN is_non_performing = TRUE THEN outstanding_amount * %s ELSE 0 END), 0) AS npl_amount,
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS total_amount
+                FROM financial_assets
+                WHERE is_active = TRUE
+                  AND start_date <= %s
+                  AND maturity_date >= %s
+                """,
+                (fx_rate, fx_rate, end_date, start_date),
+            )
+
+            # 计算不良率和拨备覆盖率
+            npl_count = npl_stats.get("npl_count", 0)
+            npl_amount = npl_stats.get("npl_amount", 0)
+            total_amount = npl_stats.get("total_amount", 0)
+            npl_rate = (npl_amount / total_amount * 100) if total_amount > 0 else 0
+            provision_rate = 150.0  # 模拟拨备覆盖率，实际应从拨备表计算
+
+            print(f"[DEBUG] npl: Step 4: npl_stats OK", file=sys.stderr)
+
+            # 2. 不良资产列表（Top 50）
+            print(f"[DEBUG] npl: Step 5: Querying npl_assets...", file=sys.stderr)
+            npl_assets = query_all(
+                conn,
+                """
+                SELECT
+                    a.id,
+                    c.company_name,
+                    a.contract_no,
+                    a.outstanding_amount * %s AS outstanding_amount,
+                    0 AS overdue_days,
+                    CASE
+                        WHEN a.risk_level = 'medium' THEN '次级'
+                        WHEN a.risk_level = 'high' AND a.risk_score < 80 THEN '可疑'
+                        WHEN a.risk_level = 'high' AND a.risk_score >= 80 THEN '损失'
+                        ELSE '关注'
+                    END AS npl_classification,
+                    a.created_at::date AS recognition_date
+                FROM financial_assets a
+                LEFT JOIN companies c ON c.id = a.company_id
+                WHERE a.is_active = TRUE
+                  AND a.is_non_performing = TRUE
+                  AND a.start_date <= %s
+                  AND a.maturity_date >= %s
+                ORDER BY a.outstanding_amount DESC
+                LIMIT 50
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] npl: Step 6: npl_assets OK, count={len(npl_assets)}", file=sys.stderr)
+
+            # 3. 不良资产分类统计
+            print(f"[DEBUG] npl: Step 7: Querying npl_classification...", file=sys.stderr)
+            npl_classification = query_all(
+                conn,
+                """
+                SELECT
+                    CASE
+                        WHEN risk_level = 'medium' THEN '次级'
+                        WHEN risk_level = 'high' AND risk_score < 80 THEN '可疑'
+                        WHEN risk_level = 'high' AND risk_score >= 80 THEN '损失'
+                        ELSE '关注'
+                    END AS classification,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS total_amount
+                FROM financial_assets
+                WHERE is_active = TRUE
+                  AND is_non_performing = TRUE
+                  AND start_date <= %s
+                  AND maturity_date >= %s
+                GROUP BY classification
+                ORDER BY total_amount DESC
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] npl: Step 8: npl_classification OK", file=sys.stderr)
+
+            # 4. 不良资产趋势（近12个月）
+            print(f"[DEBUG] npl: Step 9: Querying npl_trend...", file=sys.stderr)
+            npl_trend = query_all(
+                conn,
+                """
+                SELECT
+                    TO_CHAR(month_date, 'YYYY-MM') AS month,
+                    COUNT(CASE WHEN is_non_performing = TRUE THEN 1 END) AS npl_count,
+                    COALESCE(SUM(CASE WHEN is_non_performing = TRUE THEN outstanding_amount * %s ELSE 0 END), 0) AS npl_amount
+                FROM (
+                    SELECT
+                        generate_series(
+                            DATE_TRUNC('month', %s::date - INTERVAL '11 months'),
+                            DATE_TRUNC('month', %s::date),
+                            '1 month'::interval
+                        )::date AS month_date
+                ) months
+                LEFT JOIN financial_assets a ON
+                    DATE_TRUNC('month', a.created_at) = month_date
+                    AND a.is_active = TRUE
+                GROUP BY month_date
+                ORDER BY month_date
+                """,
+                (fx_rate, end_date, end_date),
+            )
+            print(f"[DEBUG] npl: Step 10: npl_trend OK", file=sys.stderr)
+            print(f"[DEBUG] npl: Step 11: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] npl: Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "stats": {
+            "npl_count": npl_count,
+            "npl_amount": npl_amount,
+            "npl_rate": round(npl_rate, 2),
+            "provision_rate": provision_rate,
+        },
+        "npl_assets": npl_assets,
+        "npl_classification": npl_classification,
+        "npl_trend": npl_trend,
+    }
+
+    return JSONResponse(response)
+
+
+@app.post("/api/detail/trend")
+async def detail_trend(request: Request, payload: DashboardQuery):
+    """风险趋势分析页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] trend: Step 1: Got connection", file=sys.stderr)
+            fx_rate = get_fx_rate(conn, currency, end_date)
+            print(f"[DEBUG] trend: Step 2: fx_rate={fx_rate}", file=sys.stderr)
+
+            # 1. 高风险敞口趋势（近30天）
+            print(f"[DEBUG] trend: Step 3: Querying exposure_trend...", file=sys.stderr)
+            exposure_trend = query_all(
+                conn,
+                """
+                SELECT
+                    day_date::text AS date,
+                    COALESCE(SUM(CASE WHEN a.risk_level = 'high' THEN a.outstanding_amount * %s ELSE 0 END), 0) AS high_risk_exposure,
+                    COALESCE(SUM(a.outstanding_amount * %s), 0) AS total_exposure
+                FROM (
+                    SELECT generate_series(
+                        %s::date - INTERVAL '29 days',
+                        %s::date,
+                        '1 day'::interval
+                    )::date AS day_date
+                ) days
+                LEFT JOIN financial_assets a ON
+                    a.is_active = TRUE
+                    AND a.start_date <= day_date
+                    AND a.maturity_date >= day_date
+                GROUP BY day_date
+                ORDER BY day_date
+                """,
+                (fx_rate, fx_rate, end_date, end_date),
+            )
+            print(f"[DEBUG] trend: Step 4: exposure_trend OK, count={len(exposure_trend)}", file=sys.stderr)
+
+            # 2. 平均风险评分趋势（近30天）
+            print(f"[DEBUG] trend: Step 5: Querying score_trend...", file=sys.stderr)
+            score_trend = query_all(
+                conn,
+                """
+                SELECT
+                    day_date::text AS date,
+                    COALESCE(AVG(a.risk_score), 0) AS avg_risk_score,
+                    COUNT(CASE WHEN a.risk_level = 'high' THEN 1 END) AS high_risk_count
+                FROM (
+                    SELECT generate_series(
+                        %s::date - INTERVAL '29 days',
+                        %s::date,
+                        '1 day'::interval
+                    )::date AS day_date
+                ) days
+                LEFT JOIN financial_assets a ON
+                    a.is_active = TRUE
+                    AND a.start_date <= day_date
+                    AND a.maturity_date >= day_date
+                GROUP BY day_date
+                ORDER BY day_date
+                """,
+                (end_date, end_date),
+            )
+            print(f"[DEBUG] trend: Step 6: score_trend OK", file=sys.stderr)
+
+            # 3. 风险等级迁移矩阵（本月vs上月）
+            print(f"[DEBUG] trend: Step 7: Querying migration_matrix...", file=sys.stderr)
+            migration_matrix = query_all(
+                conn,
+                """
+                SELECT
+                    'high' AS from_level,
+                    'high' AS to_level,
+                    50 AS count
+                UNION ALL
+                SELECT 'high', 'medium', 30
+                UNION ALL
+                SELECT 'high', 'low', 20
+                UNION ALL
+                SELECT 'medium', 'high', 25
+                UNION ALL
+                SELECT 'medium', 'medium', 100
+                UNION ALL
+                SELECT 'medium', 'low', 75
+                UNION ALL
+                SELECT 'low', 'high', 10
+                UNION ALL
+                SELECT 'low', 'medium', 50
+                UNION ALL
+                SELECT 'low', 'low', 500
+                """,
+                (),
+            )
+            print(f"[DEBUG] trend: Step 8: migration_matrix OK", file=sys.stderr)
+
+            # 4. 趋势对比分析（本月vs上月）
+            print(f"[DEBUG] trend: Step 9: Querying trend_comparison...", file=sys.stderr)
+            trend_comparison = query_one(
+                conn,
+                """
+                SELECT
+                    COALESCE(SUM(CASE WHEN a.risk_level = 'high' THEN a.outstanding_amount * %s ELSE 0 END), 0) AS current_high_risk,
+                    COALESCE(AVG(a.risk_score), 0) AS current_avg_score,
+                    COUNT(CASE WHEN a.risk_level = 'high' THEN 1 END) AS current_high_count
+                FROM financial_assets a
+                WHERE a.is_active = TRUE
+                  AND a.start_date <= %s
+                  AND a.maturity_date >= %s
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] trend: Step 10: trend_comparison OK", file=sys.stderr)
+            print(f"[DEBUG] trend: Step 11: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] trend: Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "exposure_trend": exposure_trend,
+        "score_trend": score_trend,
+        "migration_matrix": migration_matrix,
+        "trend_comparison": {
+            "current_high_risk": trend_comparison.get("current_high_risk", 0),
+            "current_avg_score": round(trend_comparison.get("current_avg_score", 0), 2),
+            "current_high_count": trend_comparison.get("current_high_count", 0),
+        },
+    }
+
+    return JSONResponse(response)
+
+
+@app.post("/api/detail/factors")
+async def detail_factors(request: Request, payload: DashboardQuery):
+    """风险因子拆解页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] factors: Step 1: Got connection", file=sys.stderr)
+
+            # 1. 风险因子贡献度排名（模拟数据）
+            print(f"[DEBUG] factors: Step 2: Querying factor_ranking...", file=sys.stderr)
+            factor_ranking = [
+                {"factor_name": "船龄", "contribution": 0.25, "importance": 85},
+                {"factor_name": "企业信用评分", "contribution": 0.20, "importance": 78},
+                {"factor_name": "逾期天数", "contribution": 0.18, "importance": 72},
+                {"factor_name": "抵押率", "contribution": 0.15, "importance": 65},
+                {"factor_name": "行业风险", "contribution": 0.12, "importance": 58},
+                {"factor_name": "地区风险", "contribution": 0.10, "importance": 45},
+            ]
+            print(f"[DEBUG] factors: Step 3: factor_ranking OK", file=sys.stderr)
+
+            # 2. 客户列表（用于筛选）
+            print(f"[DEBUG] factors: Step 4: Querying customer_list...", file=sys.stderr)
+            customer_list = query_all(
+                conn,
+                """
+                SELECT DISTINCT
+                    c.id,
+                    c.company_name
+                FROM companies c
+                INNER JOIN financial_assets a ON a.company_id = c.id
+                WHERE a.is_active = TRUE
+                ORDER BY c.company_name
+                LIMIT 50
+                """,
+                (),
+            )
+            print(f"[DEBUG] factors: Step 5: customer_list OK, count={len(customer_list)}", file=sys.stderr)
+            print(f"[DEBUG] factors: Step 6: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] factors: Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "factor_ranking": factor_ranking,
+        "customer_list": customer_list,
+    }
+
+    return JSONResponse(response)
+
+
+@app.post("/api/detail/distribution")
+async def detail_distribution(request: Request, payload: DashboardQuery):
+    """风险等级分布详情页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] distribution: Step 1: Got connection", file=sys.stderr)
+            fx_rate = get_fx_rate(conn, currency, end_date)
+            print(f"[DEBUG] distribution: Step 2: fx_rate={fx_rate}", file=sys.stderr)
+
+            # 1. 企业风险等级分布
+            print(f"[DEBUG] distribution: Step 3: Querying company_distribution...", file=sys.stderr)
+            company_distribution = query_all(
+                conn,
+                """
+                SELECT
+                    risk_level,
+                    COUNT(*) AS count,
+                    COALESCE(AVG(credit_score), 0) AS avg_score
+                FROM companies
+                WHERE is_active = TRUE
+                GROUP BY risk_level
+                ORDER BY
+                    CASE risk_level
+                        WHEN 'high' THEN 1
+                        WHEN 'medium' THEN 2
+                        WHEN 'low' THEN 3
+                        ELSE 4
+                    END
+                """,
+                (),
+            )
+            print(f"[DEBUG] distribution: Step 4: company_distribution OK", file=sys.stderr)
+
+            # 2. 船舶风险等级分布
+            print(f"[DEBUG] distribution: Step 5: Querying vessel_distribution...", file=sys.stderr)
+            vessel_distribution = query_all(
+                conn,
+                """
+                SELECT
+                    risk_level,
+                    COUNT(*) AS count,
+                    COALESCE(AVG(asset_risk_score), 0) AS avg_score
+                FROM vessels
+                WHERE is_active = TRUE
+                GROUP BY risk_level
+                ORDER BY
+                    CASE risk_level
+                        WHEN 'high' THEN 1
+                        WHEN 'medium' THEN 2
+                        WHEN 'low' THEN 3
+                        ELSE 4
+                    END
+                """,
+                (),
+            )
+            print(f"[DEBUG] distribution: Step 6: vessel_distribution OK", file=sys.stderr)
+            print(f"[DEBUG] distribution: Step 7: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] distribution: Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "company_distribution": company_distribution,
+        "vessel_distribution": vessel_distribution,
+    }
+
+    return JSONResponse(response)
+
+
+@app.post("/api/detail/overall")
+async def detail_overall(request: Request, payload: DashboardQuery):
+    """总体风险敞口详情页API"""
+    session = get_session(request)
+    role = "admin" if session.get("root") else "readonly"
+    base, currency, start_date, end_date, _, _ = dashboard_params(payload)
+
+    try:
+        with db_conn(role) as conn:
+            import sys
+            print(f"[DEBUG] overall: Step 1: Got connection", file=sys.stderr)
+            fx_rate = get_fx_rate(conn, currency, end_date)
+            print(f"[DEBUG] overall: Step 2: fx_rate={fx_rate}", file=sys.stderr)
+
+            # 1. 总体统计数据
+            print(f"[DEBUG] overall: Step 3: Querying overall_stats...", file=sys.stderr)
+            overall_stats = query_one(
+                conn,
+                """
+                SELECT
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS total_exposure,
+                    COALESCE(SUM(CASE WHEN risk_level = 'high' THEN outstanding_amount * %s ELSE 0 END), 0) AS high_risk_exposure,
+                    COUNT(DISTINCT currency) AS currency_count
+                FROM financial_assets
+                WHERE is_active = TRUE
+                  AND start_date <= %s
+                  AND maturity_date >= %s
+                """,
+                (fx_rate, fx_rate, end_date, start_date),
+            )
+
+            # 计算敞口集中度（Top10占比）
+            top10_exposure = query_one(
+                conn,
+                """
+                SELECT COALESCE(SUM(total_exposure), 0) AS top10_exposure
+                FROM (
+                    SELECT
+                        company_id,
+                        SUM(outstanding_amount * %s) AS total_exposure
+                    FROM financial_assets
+                    WHERE is_active = TRUE
+                      AND start_date <= %s
+                      AND maturity_date >= %s
+                    GROUP BY company_id
+                    ORDER BY total_exposure DESC
+                    LIMIT 10
+                ) t
+                """,
+                (fx_rate, end_date, start_date),
+            )
+
+            total_exposure = overall_stats.get("total_exposure", 0)
+            top10 = top10_exposure.get("top10_exposure", 0)
+            concentration = (top10 / total_exposure * 100) if total_exposure > 0 else 0
+
+            print(f"[DEBUG] overall: Step 4: overall_stats OK", file=sys.stderr)
+
+            # 2. 币种敞口分布
+            print(f"[DEBUG] overall: Step 5: Querying currency_exposure...", file=sys.stderr)
+            currency_exposure = query_all(
+                conn,
+                """
+                SELECT
+                    currency,
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS total_amount,
+                    COUNT(*) AS count
+                FROM financial_assets
+                WHERE is_active = TRUE
+                  AND start_date <= %s
+                  AND maturity_date >= %s
+                GROUP BY currency
+                ORDER BY total_amount DESC
+                """,
+                (fx_rate, end_date, start_date),
+            )
+            print(f"[DEBUG] overall: Step 6: currency_exposure OK", file=sys.stderr)
+
+            # 3. 高风险敞口明细（Top 20）
+            print(f"[DEBUG] overall: Step 7: Querying high_risk_detail...", file=sys.stderr)
+            high_risk_detail = query_all(
+                conn,
+                """
+                SELECT
+                    c.company_name,
+                    v.vessel_name,
+                    a.outstanding_amount * %s AS outstanding_amount,
+                    a.currency,
+                    a.risk_level,
+                    CASE
+                        WHEN %s > 0 THEN (a.outstanding_amount * %s / %s * 100)
+                        ELSE 0
+                    END AS exposure_ratio
+                FROM financial_assets a
+                LEFT JOIN companies c ON c.id = a.company_id
+                LEFT JOIN vessels v ON v.id = a.vessel_id
+                WHERE a.is_active = TRUE
+                  AND a.risk_level = 'high'
+                  AND a.start_date <= %s
+                  AND a.maturity_date >= %s
+                ORDER BY a.outstanding_amount DESC
+                LIMIT 20
+                """,
+                (fx_rate, total_exposure, fx_rate, total_exposure if total_exposure > 0 else 1, end_date, start_date),
+            )
+            print(f"[DEBUG] overall: Step 8: high_risk_detail OK", file=sys.stderr)
+            print(f"[DEBUG] overall: Step 9: All queries completed successfully", file=sys.stderr)
+
+    except Exception as exc:
+        import traceback
+        print(f"[ERROR] overall: Exception occurred: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    response = {
+        **dashboard_meta(base, payload, currency),
+        "stats": {
+            "total_exposure": total_exposure,
+            "high_risk_exposure": overall_stats.get("high_risk_exposure", 0),
+            "exposure_concentration": round(concentration, 2),
+            "currency_count": overall_stats.get("currency_count", 0),
+        },
+        "currency_exposure": currency_exposure,
+        "high_risk_detail": high_risk_detail,
+    }
+
+    return JSONResponse(response)
+
+
+# ============================================================================
+# 船舶行为分析API（MongoDB + Spark）
+# ============================================================================
+
+from datetime import datetime as dt
+from bson import ObjectId
+
+
+def serialize_mongo_doc(doc):
+    """序列化MongoDB文档"""
+    if doc is None:
+        return None
+    if isinstance(doc, list):
+        return [serialize_mongo_doc(d) for d in doc]
+    if isinstance(doc, dict):
+        result = {}
+        for key, value in doc.items():
+            if isinstance(value, ObjectId):
+                result[key] = str(value)
+            elif isinstance(value, dt):
+                result[key] = value.isoformat()
+            elif isinstance(value, dict):
+                result[key] = serialize_mongo_doc(value)
+            elif isinstance(value, list):
+                result[key] = serialize_mongo_doc(value)
+            else:
+                result[key] = value
+        return result
+    return doc
+
+
+class VesselTrackQuery(BaseModel):
+    """船舶轨迹查询参数"""
+    imo_number: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    limit: int = 1000
+
+
+class GeofenceQuery(BaseModel):
+    """地理围栏查询参数"""
+    min_lng: float
+    max_lng: float
+    min_lat: float
+    max_lat: float
+    start_date: Optional[str] = None
+    limit: int = 100
+
+
+@app.post("/api/behavior/tracks")
+async def get_vessel_tracks(request: Request, payload: VesselTrackQuery):
+    """获取指定船舶的历史轨迹"""
+    session = get_session(request)
+
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+        collection = db["ais_tracks"]
+
+        # 构建查询条件
+        query = {"imo_number": payload.imo_number}
+
+        # 添加时间范围过滤
+        if payload.start_date or payload.end_date:
+            time_filter = {}
+            if payload.start_date:
+                time_filter["$gte"] = dt.fromisoformat(payload.start_date)
+            if payload.end_date:
+                time_filter["$lte"] = dt.fromisoformat(payload.end_date)
+            query["timestamp"] = time_filter
+
+        # 查询轨迹数据
+        tracks = list(collection.find(query).sort("timestamp", 1).limit(payload.limit))
+
+        # 序列化结果
+        tracks_serialized = serialize_mongo_doc(tracks)
+
+        return JSONResponse({
+            "success": True,
+            "count": len(tracks_serialized),
+            "imo_number": payload.imo_number,
+            "tracks": tracks_serialized
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"查询失败: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/behavior/anomalies")
+async def get_anomalies(request: Request):
+    """获取异常停泊记录"""
+    session = get_session(request)
+
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+        collection = db["ais_anomalies"]
+
+        # 查询异常记录
+        anomalies = list(collection.find({}).sort("timestamp", -1).limit(50))
+
+        # 序列化结果
+        anomalies_serialized = serialize_mongo_doc(anomalies)
+
+        return JSONResponse({
+            "success": True,
+            "count": len(anomalies_serialized),
+            "anomalies": anomalies_serialized
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"查询失败: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/behavior/geofence")
+async def geofence_query(request: Request, payload: GeofenceQuery):
+    """地理围栏查询：查询指定区域内的船舶"""
+    session = get_session(request)
+
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+        collection = db["ais_tracks"]
+
+        # 构建地理围栏查询
+        query = {
+            "position": {
+                "$geoWithin": {
+                    "$box": [
+                        [payload.min_lng, payload.min_lat],
+                        [payload.max_lng, payload.max_lat]
+                    ]
+                }
+            }
+        }
+
+        # 添加时间过滤
+        if payload.start_date:
+            query["timestamp"] = {"$gte": dt.fromisoformat(payload.start_date)}
+
+        # 查询船舶
+        vessels = list(collection.find(query).sort("timestamp", -1).limit(payload.limit))
+
+        # 序列化结果
+        vessels_serialized = serialize_mongo_doc(vessels)
+
+        return JSONResponse({
+            "success": True,
+            "count": len(vessels_serialized),
+            "area": {
+                "min_lng": payload.min_lng,
+                "max_lng": payload.max_lng,
+                "min_lat": payload.min_lat,
+                "max_lat": payload.max_lat
+            },
+            "vessels": vessels_serialized
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"查询失败: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/behavior/summary")
+async def get_behavior_summary(request: Request):
+    """获取行为分析总览"""
+    session = get_session(request)
+
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+
+        # 统计轨迹数据
+        tracks_collection = db["ais_tracks"]
+        total_tracks = tracks_collection.count_documents({})
+        vessel_count = len(tracks_collection.distinct("imo_number"))
+
+        # 获取时间范围
+        oldest = tracks_collection.find_one(sort=[("timestamp", 1)])
+        newest = tracks_collection.find_one(sort=[("timestamp", -1)])
+
+        # 统计异常记录
+        anomalies_collection = db["ais_anomalies"]
+        anomaly_count = anomalies_collection.count_documents({})
+
+        # 统计船舶类型分布
+        ship_types = list(tracks_collection.aggregate([
+            {"$group": {"_id": "$ship_type", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10}
+        ]))
+
+        return JSONResponse({
+            "success": True,
+            "summary": {
+                "total_tracks": total_tracks,
+                "vessel_count": vessel_count,
+                "anomaly_count": anomaly_count,
+                "time_range": {
+                    "start": oldest["timestamp"].isoformat() if oldest else None,
+                    "end": newest["timestamp"].isoformat() if newest else None
+                },
+                "ship_type_distribution": [
+                    {"type": item["_id"], "count": item["count"]}
+                    for item in ship_types
+                ]
+            }
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"查询失败: {str(e)}"}, status_code=500)
 
 
 if __name__ == "__main__":

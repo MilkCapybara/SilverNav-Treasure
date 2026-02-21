@@ -148,6 +148,7 @@ async function fetchDashboard() {
             return;
         }
         updateDashboard(data);
+        showDashToast("数据加载成功 ✓", false);
     } catch (err) {
         if (err.name === "AbortError") {
             showDashToast("数据请求超时，请稍后重试", true);
@@ -190,6 +191,7 @@ function bootDashboard() {
     bindCurrencySelect();
     bindUnitSelect();
     bindLogout();
+    bindPageNav();  // 添加页面导航绑定
     fetchDashboard();
 }
 
@@ -198,3 +200,29 @@ window.addEventListener("load", () => {
         bootDashboard();
     }
 });
+
+// 页面导航功能
+function bindPageNav() {
+    const navBtn = document.getElementById("pageNavBtn");
+    const navPanel = document.getElementById("pageNavPanel");
+    const closeBtn = document.getElementById("navCloseBtn");
+
+    if (!navBtn || !navPanel) return;
+
+    const close = () => navPanel.classList.remove("show");
+    const toggle = () => navPanel.classList.toggle("show");
+
+    navBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggle();
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            close();
+        });
+    }
+
+    document.addEventListener("click", close);
+}
