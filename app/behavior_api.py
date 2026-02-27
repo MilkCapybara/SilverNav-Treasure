@@ -319,6 +319,56 @@ async def get_behavior_summary(request: Request):
         }, status_code=500)
 
 
+@router.get("/api/behavior/vessels")
+async def get_vessel_list(request: Request):
+    """
+    获取船舶列表（从MongoDB的ais_tracks集合中获取）
+
+    返回：
+    - 船舶列表（imo_number, vessel_name, ship_type）
+    """
+    try:
+        db = get_mongo_db()
+        tracks_collection = db["ais_tracks"]
+
+        # 使用聚合管道获取不同的船舶
+        vessels = list(tracks_collection.aggregate([
+            {
+                "$group": {
+                    "_id": "$imo_number",
+                    "vessel_name": {"$first": "$vessel_name"},
+                    "ship_type": {"$first": "$ship_type"},
+                    "flag": {"$first": "$flag"}
+                }
+            },
+            {"$sort": {"vessel_name": 1}},
+            {"$limit": 100}
+        ]))
+
+        # 格式化结果
+        vessel_list = [
+            {
+                "imo_number": v["_id"],
+                "vessel_name": v.get("vessel_name", "Unknown"),
+                "ship_type": v.get("ship_type", "Unknown"),
+                "flag": v.get("flag", "Unknown")
+            }
+            for v in vessels
+        ]
+
+        return JSONResponse({
+            "success": True,
+            "count": len(vessel_list),
+            "vessels": vessel_list
+        })
+
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "msg": f"查询失败: {str(e)}"
+        }, status_code=500)
+
+
 if __name__ == "__main__":
     # 测试API
     import asyncio
@@ -334,3 +384,4 @@ if __name__ == "__main__":
     print("  POST /api/behavior/geofence - 地理围栏查询")
     print("  POST /api/behavior/statistics - 获取船舶统计")
     print("  GET  /api/behavior/summary - 获取行为分析总览")
+    print("  GET  /api/behavior/vessels - 获取船舶列表")

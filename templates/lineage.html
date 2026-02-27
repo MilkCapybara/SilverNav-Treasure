@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银航宝 · 数据血缘</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+    <link rel="stylesheet" href="/static/css/lineage.css">
+</head>
+<body class="dashboard-body lineage-page">
+    <div class="skyline" aria-hidden="true"></div>
+    <div class="grid-glow" aria-hidden="true"></div>
+    <div class="data-flow-bg" id="dataFlowBg"></div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <button class="back-btn" id="backBtn" data-tip="返回总览大屏">返回大屏</button>
+            <div class="date-display">
+                <span class="date-label">数据基准日：</span>
+                <span class="date-value" id="baseDateValue">--</span>
+            </div>
+        </div>
+        <div class="top-center">
+            <h1>🔗 数据血缘</h1>
+            <p id="lineageTitle">数据流转与依赖关系追踪</p>
+        </div>
+        <div class="top-right">
+            <div class="clock" id="cnClock">--</div>
+            <div class="meta">
+                <span class="tag">实时监控</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="lineage-content">
+        <!-- 数据源总览 -->
+        <section class="lineage-stats">
+            <div class="stat-card glow-card">
+                <div class="stat-icon">🗄️</div>
+                <div class="stat-info">
+                    <div class="stat-label">数据源</div>
+                    <div class="stat-value" id="dataSourceCount">2</div>
+                    <div class="stat-desc">MongoDB + PostgreSQL</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <div class="stat-label">数据表</div>
+                    <div class="stat-value" id="tableCount">--</div>
+                    <div class="stat-desc">总表数量</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-info">
+                    <div class="stat-label">数据流</div>
+                    <div class="stat-value" id="dataFlowCount">--</div>
+                    <div class="stat-desc">流转路径</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-info">
+                    <div class="stat-label">实时更新</div>
+                    <div class="stat-value" id="updateStatus">活跃</div>
+                    <div class="stat-desc">数据状态</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据血缘图谱 -->
+        <section class="card lineage-card glow-border">
+            <h3>🌐 数据血缘图谱</h3>
+            <div class="lineage-controls">
+                <button class="control-btn active" data-view="flow">流程视图</button>
+                <button class="control-btn" data-view="tree">树形视图</button>
+                <button class="control-btn" data-view="network">网络视图</button>
+            </div>
+            <div id="lineageGraph" class="lineage-graph">
+                <svg id="lineageSvg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid meet">
+                    <!-- 数据流动画效果 -->
+                    <defs>
+                        <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#3cebdc;stop-opacity:0" />
+                            <stop offset="50%" style="stop-color:#3cebdc;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#3cebdc;stop-opacity:0" />
+                        </linearGradient>
+
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- 数据源层 -->
+                    <g id="sourceLayer"></g>
+
+                    <!-- 连接线层 -->
+                    <g id="connectionLayer"></g>
+
+                    <!-- 处理层 -->
+                    <g id="processLayer"></g>
+
+                    <!-- 应用层 -->
+                    <g id="applicationLayer"></g>
+                </svg>
+            </div>
+        </section>
+
+        <!-- 数据表详情 -->
+        <div class="lineage-row">
+            <section class="card lineage-card glow-border">
+                <h3>📦 MongoDB 集合</h3>
+                <div class="table-list" id="mongoTableList">
+                    <div class="table-item" data-table="ais_tracks">
+                        <div class="table-icon">📍</div>
+                        <div class="table-info">
+                            <div class="table-name">ais_tracks</div>
+                            <div class="table-desc">AIS轨迹原始数据</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="aisTracksCount">--</span></span>
+                                <span class="stat-badge">大小: <span id="aisTracksSize">--</span></span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="vessel_statistics">
+                        <div class="table-icon">📊</div>
+                        <div class="table-info">
+                            <div class="table-name">vessel_statistics</div>
+                            <div class="table-desc">船舶统计分析结果</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="vesselStatsCount">--</span></span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="ais_anomalies">
+                        <div class="table-icon">⚠️</div>
+                        <div class="table-info">
+                            <div class="table-name">ais_anomalies</div>
+                            <div class="table-desc">异常检测结果</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="anomaliesCount">--</span></span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="vessel_analysis">
+                        <div class="table-icon">🔍</div>
+                        <div class="table-info">
+                            <div class="table-name">vessel_analysis</div>
+                            <div class="table-desc">船舶画像分析</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="analysisCount">--</span></span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card lineage-card glow-border">
+                <h3>🗃️ PostgreSQL 表</h3>
+                <div class="table-list" id="pgTableList">
+                    <div class="table-item" data-table="vessels">
+                        <div class="table-icon">🚢</div>
+                        <div class="table-info">
+                            <div class="table-name">vessels</div>
+                            <div class="table-desc">船舶基本信息</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="vesselsCount">--</span></span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="companies">
+                        <div class="table-icon">🏢</div>
+                        <div class="table-info">
+                            <div class="table-name">companies</div>
+                            <div class="table-desc">企业信息</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="companiesCount">--</span></span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="assets">
+                        <div class="table-icon">💰</div>
+                        <div class="table-info">
+                            <div class="table-name">assets</div>
+                            <div class="table-desc">资产信息</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="assetsCount">--</span></span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 数据流转时间线 -->
+        <section class="card lineage-card glow-border">
+            <h3>⏱️ 数据流转时间线</h3>
+            <div class="timeline" id="dataTimeline">
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">AIS数据采集</div>
+                        <div class="timeline-desc">从AIS信号源实时采集船舶位置数据</div>
+                        <div class="timeline-time">实时</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">数据清洗与存储</div>
+                        <div class="timeline-desc">写入MongoDB ais_tracks集合</div>
+                        <div class="timeline-time">延迟 &lt; 1s</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Spark批处理分析</div>
+                        <div class="timeline-desc">统计分析生成vessel_statistics</div>
+                        <div class="timeline-time">每小时</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">异常检测</div>
+                        <div class="timeline-desc">识别异常停泊写入ais_anomalies</div>
+                        <div class="timeline-time">每30分钟</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">船舶画像生成</div>
+                        <div class="timeline-desc">综合分析生成vessel_analysis</div>
+                        <div class="timeline-time">每日</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">风控评估</div>
+                        <div class="timeline-desc">关联PostgreSQL数据进行风险评估</div>
+                        <div class="timeline-time">每日</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据质量监控 -->
+        <section class="card lineage-card glow-border">
+            <h3>📈 数据质量监控</h3>
+            <div class="quality-grid">
+                <div class="quality-item">
+                    <div class="quality-label">数据完整性</div>
+                    <div class="quality-bar">
+                        <div class="quality-fill" style="width: 98%;" data-value="98"></div>
+                    </div>
+                    <div class="quality-value">98%</div>
+                </div>
+                <div class="quality-item">
+                    <div class="quality-label">数据准确性</div>
+                    <div class="quality-bar">
+                        <div class="quality-fill" style="width: 95%;" data-value="95"></div>
+                    </div>
+                    <div class="quality-value">95%</div>
+                </div>
+                <div class="quality-item">
+                    <div class="quality-label">数据时效性</div>
+                    <div class="quality-bar">
+                        <div class="quality-fill" style="width: 99%;" data-value="99"></div>
+                    </div>
+                    <div class="quality-value">99%</div>
+                </div>
+                <div class="quality-item">
+                    <div class="quality-label">数据一致性</div>
+                    <div class="quality-bar">
+                        <div class="quality-fill" style="width: 97%;" data-value="97"></div>
+                    </div>
+                    <div class="quality-value">97%</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast" id="lineageToast" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/dashboard/state.js"></script>
+    <script src="/static/js/dashboard/utils.js"></script>
+    <script src="/static/js/lineage.js"></script>
+</body>
+</html>

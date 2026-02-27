@@ -1,6 +1,7 @@
 // 船舶行为分析页面逻辑
 const Behavior = {
     token: localStorage.getItem("silvernav_token") || "",
+    baseDate: "",
     map: null,
     trackLayer: null,
     currentVessel: null,
@@ -19,15 +20,58 @@ function showBehaviorToast(msg, isError = false) {
     }, 2000);
 }
 
+// 初始化时钟
+function initClock() {
+    const clockEl = document.getElementById("cnClock");
+    if (!clockEl) return;
+
+    function updateClock() {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString("zh-CN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
+        });
+        clockEl.textContent = timeStr;
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+}
+
+// 从localStorage获取基准日期
+function getBaseDate() {
+    const storedDate = localStorage.getItem("silvernav_base_date");
+    if (storedDate) {
+        return storedDate;
+    }
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+}
+
+// 更新基准日期显示
+function updateBaseDateDisplay() {
+    const baseDate = getBaseDate();
+    Behavior.baseDate = baseDate;
+
+    const baseDateEl = document.getElementById("baseDateValue");
+    if (baseDateEl) {
+        baseDateEl.textContent = baseDate;
+    }
+}
+
 // 初始化地图
 function initMap() {
     // 创建地图，中心点设置为上海
     Behavior.map = L.map('mapContainer').setView([31.2304, 121.4737], 6);
 
-    // 添加OpenStreetMap底图
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 18
+    // 添加地图底图 - 使用多个备选源以确保在中国可访问
+    // 优先使用CartoDB的Voyager底图（在中国访问较稳定）
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
     }).addTo(Behavior.map);
 
     // 创建轨迹图层组
@@ -116,18 +160,13 @@ async function loadVesselList() {
     if (!Behavior.token) return;
 
     try {
-        // 从PostgreSQL读取船舶列表
-        const response = await fetch("/api/dashboard/vessel-top", {
-            method: "POST",
+        // 从MongoDB读取船舶列表
+        const response = await fetch("/api/behavior/vessels", {
+            method: "GET",
             headers: {
                 "Authorization": `Bearer ${Behavior.token}`,
                 "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                base_date: new Date().toISOString().split('T')[0],
-                range: "30d",
-                currency: "CNY"
-            })
+            }
         });
 
         const data = await response.json();
@@ -144,9 +183,15 @@ async function loadVesselList() {
             });
 
             console.log("船舶列表加载成功", data.vessels.length);
+        } else {
+            const select = document.getElementById("vesselSelect");
+            select.innerHTML = '<option value="">暂无船舶数据</option>';
+            console.error("加载船舶列表失败:", data.msg);
         }
     } catch (error) {
         console.error("加载船舶列表失败:", error);
+        const select = document.getElementById("vesselSelect");
+        select.innerHTML = '<option value="">加载失败</option>';
     }
 }
 
@@ -354,6 +399,21 @@ function clearTrack() {
 
 // 初始化页面
 function initBehaviorPage() {
+    // 初始化时钟
+    initClock();
+
+    // 更新基准日期显示
+    updateBaseDateDisplay();
+
+    // 监听localStorage变化（当大屏修改基准日期时同步）
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'silvernav_base_date') {
+            updateBaseDateDisplay();
+            // 重新加载数据
+            loadSummary();
+        }
+    });
+
     // 初始化地图
     initMap();
 

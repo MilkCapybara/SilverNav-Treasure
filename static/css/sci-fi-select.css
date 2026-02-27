@@ -1,0 +1,381 @@
+/**
+ * 科幻风格下拉框样式
+ * 航运金融科技风 - 统一下拉框组件
+ */
+
+/* ==================== 基础下拉框样式 ==================== */
+select.sci-fi-select,
+.filter-group select,
+.behavior-filters select {
+    position: relative;
+    padding: 12px 40px 12px 16px;
+    background: linear-gradient(135deg,
+        rgba(15, 43, 75, 0.85) 0%,
+        rgba(11, 31, 54, 0.9) 100%);
+    border: 1px solid rgba(79, 168, 255, 0.4);
+    border-radius: 12px;
+    color: var(--text-main, #e9f6ff);
+    font-family: "Saira Condensed", "Rajdhani", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* 发光效果 */
+    box-shadow:
+        inset 0 0 20px rgba(60, 235, 220, 0.1),
+        0 0 0 0 rgba(60, 235, 220, 0),
+        0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* 自定义箭头 */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image:
+        linear-gradient(135deg,
+            rgba(15, 43, 75, 0.85) 0%,
+            rgba(11, 31, 54, 0.9) 100%),
+        linear-gradient(45deg, transparent 50%, rgba(60, 235, 220, 0.8) 50%),
+        linear-gradient(-45deg, rgba(60, 235, 220, 0.8) 50%, transparent 50%);
+    background-position:
+        0 0,
+        calc(100% - 20px) calc(50% - 2px),
+        calc(100% - 15px) calc(50% - 2px);
+    background-size:
+        100% 100%,
+        5px 5px,
+        5px 5px;
+    background-repeat: no-repeat;
+}
+
+/* 悬停效果 */
+select.sci-fi-select:hover,
+.filter-group select:hover,
+.behavior-filters select:hover {
+    border-color: rgba(60, 235, 220, 0.7);
+    background: linear-gradient(135deg,
+        rgba(15, 43, 75, 0.95) 0%,
+        rgba(11, 31, 54, 1) 100%);
+    box-shadow:
+        inset 0 0 25px rgba(60, 235, 220, 0.2),
+        0 0 20px rgba(60, 235, 220, 0.3),
+        0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+}
+
+/* 聚焦效果 */
+select.sci-fi-select:focus,
+.filter-group select:focus,
+.behavior-filters select:focus {
+    border-color: rgba(60, 235, 220, 0.9);
+    background: linear-gradient(135deg,
+        rgba(15, 43, 75, 1) 0%,
+        rgba(11, 31, 54, 1) 100%);
+    box-shadow:
+        inset 0 0 30px rgba(60, 235, 220, 0.25),
+        0 0 25px rgba(60, 235, 220, 0.5),
+        0 0 40px rgba(60, 235, 220, 0.2),
+        0 8px 20px rgba(0, 0, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+/* 激活状态 */
+select.sci-fi-select:active,
+.filter-group select:active,
+.behavior-filters select:active {
+    transform: translateY(0);
+    box-shadow:
+        inset 0 0 20px rgba(60, 235, 220, 0.3),
+        0 0 15px rgba(60, 235, 220, 0.4),
+        0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 禁用状态 */
+select.sci-fi-select:disabled,
+.filter-group select:disabled,
+.behavior-filters select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: linear-gradient(135deg,
+        rgba(15, 43, 75, 0.5) 0%,
+        rgba(11, 31, 54, 0.6) 100%);
+    border-color: rgba(79, 168, 255, 0.2);
+    box-shadow: none;
+}
+
+/* ==================== 选项样式 ==================== */
+select.sci-fi-select option,
+.filter-group select option,
+.behavior-filters select option {
+    background: rgba(11, 31, 54, 0.98);
+    color: var(--text-main, #e9f6ff);
+    padding: 12px 16px;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(79, 168, 255, 0.1);
+}
+
+select.sci-fi-select option:hover,
+.filter-group select option:hover,
+.behavior-filters select option:hover {
+    background: linear-gradient(90deg,
+        rgba(60, 235, 220, 0.2) 0%,
+        rgba(79, 168, 255, 0.2) 100%);
+    color: var(--cyan-300, #7ef7f0);
+}
+
+select.sci-fi-select option:checked,
+.filter-group select option:checked,
+.behavior-filters select option:checked {
+    background: linear-gradient(90deg,
+        rgba(60, 235, 220, 0.3) 0%,
+        rgba(79, 168, 255, 0.3) 100%);
+    color: var(--cyan-300, #7ef7f0);
+    font-weight: 700;
+}
+
+/* ==================== 增强版下拉框（带图标） ==================== */
+.sci-fi-select-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.sci-fi-select-wrapper::before {
+    content: "";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: linear-gradient(135deg,
+        var(--cyan-400, #3cebdc) 0%,
+        var(--blue-400, #4fa8ff) 100%);
+    box-shadow:
+        0 0 12px rgba(60, 235, 220, 0.6),
+        inset 0 0 8px rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.9;
+}
+
+.sci-fi-select-wrapper::after {
+    content: "▼";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(60, 235, 220, 0.8);
+    font-size: 0.7rem;
+    pointer-events: none;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.sci-fi-select-wrapper:hover::after {
+    color: rgba(60, 235, 220, 1);
+    transform: translateY(-50%) scale(1.2);
+}
+
+.sci-fi-select-wrapper select {
+    padding-left: 44px;
+}
+
+/* ==================== 脉冲动画效果 ==================== */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 20px rgba(60, 235, 220, 0.1),
+            0 0 0 0 rgba(60, 235, 220, 0),
+            0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 25px rgba(60, 235, 220, 0.2),
+            0 0 15px rgba(60, 235, 220, 0.4),
+            0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+}
+
+select.sci-fi-select.pulse,
+.filter-group select.pulse,
+.behavior-filters select.pulse {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ==================== 扫描线效果 ==================== */
+@keyframes scan-line {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.sci-fi-select-wrapper.scanning::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(60, 235, 220, 0.8) 50%,
+        transparent 100%);
+    animation: scan-line 2s linear infinite;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* ==================== 数据流效果 ==================== */
+@keyframes data-flow {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+select.sci-fi-select.data-flow,
+.filter-group select.data-flow,
+.behavior-filters select.data-flow {
+    background:
+        linear-gradient(90deg,
+            rgba(60, 235, 220, 0.05) 0%,
+            rgba(60, 235, 220, 0.15) 25%,
+            rgba(60, 235, 220, 0.05) 50%,
+            rgba(60, 235, 220, 0.15) 75%,
+            rgba(60, 235, 220, 0.05) 100%),
+        linear-gradient(135deg,
+            rgba(15, 43, 75, 0.85) 0%,
+            rgba(11, 31, 54, 0.9) 100%);
+    background-size: 200% 100%, 100% 100%;
+    animation: data-flow 3s linear infinite;
+}
+
+/* ==================== 小尺寸适配 ==================== */
+select.sci-fi-select.compact,
+.filter-group select.compact,
+.behavior-filters select.compact {
+    padding: 8px 32px 8px 12px;
+    font-size: 0.85rem;
+    border-radius: 10px;
+}
+
+/* ==================== 大尺寸适配 ==================== */
+select.sci-fi-select.large,
+.filter-group select.large,
+.behavior-filters select.large {
+    padding: 16px 48px 16px 20px;
+    font-size: 1.1rem;
+    border-radius: 14px;
+}
+
+/* ==================== 响应式设计 ==================== */
+@media (max-width: 768px) {
+    select.sci-fi-select,
+    .filter-group select,
+    .behavior-filters select {
+        padding: 10px 36px 10px 14px;
+        font-size: 0.9rem;
+    }
+
+    .sci-fi-select-wrapper::before {
+        width: 16px;
+        height: 16px;
+        left: 10px;
+    }
+
+    .sci-fi-select-wrapper select {
+        padding-left: 38px;
+    }
+}
+
+/* ==================== 特殊主题：警告状态 ==================== */
+select.sci-fi-select.warning,
+.filter-group select.warning,
+.behavior-filters select.warning {
+    border-color: rgba(255, 182, 28, 0.5);
+    background: linear-gradient(135deg,
+        rgba(255, 182, 28, 0.1) 0%,
+        rgba(15, 43, 75, 0.85) 100%);
+}
+
+select.sci-fi-select.warning:hover,
+.filter-group select.warning:hover,
+.behavior-filters select.warning:hover {
+    border-color: rgba(255, 182, 28, 0.7);
+    box-shadow:
+        inset 0 0 25px rgba(255, 182, 28, 0.15),
+        0 0 20px rgba(255, 182, 28, 0.3),
+        0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ==================== 特殊主题：错误状态 ==================== */
+select.sci-fi-select.error,
+.filter-group select.error,
+.behavior-filters select.error {
+    border-color: rgba(255, 90, 122, 0.5);
+    background: linear-gradient(135deg,
+        rgba(255, 90, 122, 0.1) 0%,
+        rgba(15, 43, 75, 0.85) 100%);
+}
+
+select.sci-fi-select.error:hover,
+.filter-group select.error:hover,
+.behavior-filters select.error:hover {
+    border-color: rgba(255, 90, 122, 0.7);
+    box-shadow:
+        inset 0 0 25px rgba(255, 90, 122, 0.15),
+        0 0 20px rgba(255, 90, 122, 0.3),
+        0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ==================== 特殊主题：成功状态 ==================== */
+select.sci-fi-select.success,
+.filter-group select.success,
+.behavior-filters select.success {
+    border-color: rgba(60, 235, 220, 0.6);
+    background: linear-gradient(135deg,
+        rgba(60, 235, 220, 0.15) 0%,
+        rgba(15, 43, 75, 0.85) 100%);
+}
+
+select.sci-fi-select.success:hover,
+.filter-group select.success:hover,
+.behavior-filters select.success:hover {
+    border-color: rgba(60, 235, 220, 0.8);
+    box-shadow:
+        inset 0 0 25px rgba(60, 235, 220, 0.2),
+        0 0 20px rgba(60, 235, 220, 0.4),
+        0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ==================== 加载状态 ==================== */
+@keyframes loading-spin {
+    0% {
+        transform: translateY(-50%) rotate(0deg);
+    }
+    100% {
+        transform: translateY(-50%) rotate(360deg);
+    }
+}
+
+.sci-fi-select-wrapper.loading::after {
+    content: "⟳";
+    animation: loading-spin 1s linear infinite;
+    color: rgba(60, 235, 220, 1);
+}
+
+select.sci-fi-select.loading,
+.filter-group select.loading,
+.behavior-filters select.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}

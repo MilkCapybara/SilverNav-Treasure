@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银航宝 · 数据质量监控</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+    <link rel="stylesheet" href="/static/css/quality.css">
+</head>
+<body class="dashboard-body quality-page">
+    <div class="skyline" aria-hidden="true"></div>
+    <div class="grid-glow" aria-hidden="true"></div>
+    <div class="data-flow" aria-hidden="true"></div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <button class="back-btn" id="backBtn" data-tip="返回总览大屏">返回大屏</button>
+            <div class="quality-score-badge">
+                <span class="score-label">综合质量分</span>
+                <span class="score-value" id="overallScore">95.8</span>
+            </div>
+        </div>
+        <div class="top-center">
+            <h1>🎯 数据质量监控</h1>
+            <p>Data Quality Monitoring Dashboard</p>
+        </div>
+        <div class="top-right">
+            <div class="clock" id="cnClock">--</div>
+            <div class="meta">
+                <span class="tag">最后检查：5分钟前</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="quality-content">
+        <!-- 质量维度卡片 -->
+        <section class="quality-stats">
+            <div class="stat-card glow-card">
+                <div class="stat-icon">✓</div>
+                <div class="stat-info">
+                    <div class="stat-label">完整性</div>
+                    <div class="stat-value" id="completeness">98.5%</div>
+                    <div class="stat-status excellent">优秀</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">◎</div>
+                <div class="stat-info">
+                    <div class="stat-label">准确性</div>
+                    <div class="stat-value" id="accuracy">96.2%</div>
+                    <div class="stat-status excellent">优秀</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">⏰</div>
+                <div class="stat-info">
+                    <div class="stat-label">时效性</div>
+                    <div class="stat-value" id="timeliness">94.8%</div>
+                    <div class="stat-status good">良好</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-info">
+                    <div class="stat-label">一致性</div>
+                    <div class="stat-value" id="consistency">92.3%</div>
+                    <div class="stat-status good">良好</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 主要监控面板 -->
+        <div class="quality-grid">
+            <!-- 数据源质量概览 -->
+            <section class="card quality-card glow-border">
+                <h3>📊 数据源质量概览</h3>
+                <div class="datasource-list">
+                    <div class="datasource-item">
+                        <div class="ds-header">
+                            <span class="ds-name">PostgreSQL - silvernav_db</span>
+                            <span class="ds-score excellent">97.5</span>
+                        </div>
+                        <div class="ds-metrics">
+                            <div class="metric-bar">
+                                <span class="metric-label">完整性</span>
+                                <div class="bar-track">
+                                    <div class="bar-fill excellent" style="width: 99%"></div>
+                                </div>
+                                <span class="metric-value">99%</span>
+                            </div>
+                            <div class="metric-bar">
+                                <span class="metric-label">准确性</span>
+                                <div class="bar-track">
+                                    <div class="bar-fill excellent" style="width: 98%"></div>
+                                </div>
+                                <span class="metric-value">98%</span>
+                            </div>
+                            <div class="metric-bar">
+                                <span class="metric-label">时效性</span>
+                                <div class="bar-track">
+                                    <div class="bar-fill good" style="width: 96%"></div>
+                                </div>
+                                <span class="metric-value">96%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="datasource-item">
+                        <div class="ds-header">
+                            <span class="ds-name">MongoDB - silvernav</span>
+                            <span class="ds-score good">94.2</span>
+                        </div>
+                        <div class="ds-metrics">
+                            <div class="metric-bar">
+                                <span class="metric-label">完整性</span>
+                                <div class="bar-track">
+                                    <div class="bar-fill excellent" style="width: 98%"></div>
+                                </div>
+                                <span class="metric-value">98%</span>
+                            </div>
+                            <div class="metric-bar">
+                                <span class="metric-label">准确性</span>
+                                <div class="bar-track">
+                                    <div class="bar-fill good" style="width: 94%"></div>
+                                </div>
+                                <span class="metric-value">94%</span>
+                            </div>
+                            <div class="metric-bar">
+                                <span class="metric-label">时效性</span>
+                                <div class="bar-track">
+                                    <div class="bar-fill good" style="width: 91%"></div>
+                                </div>
+                                <span class="metric-value">91%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 质量趋势图 -->
+            <section class="card quality-card glow-border">
+                <h3>📈 质量趋势（近30天）</h3>
+                <div class="chart-container">
+                    <canvas id="qualityTrendChart"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <span class="legend-item"><span class="dot completeness"></span>完整性</span>
+                    <span class="legend-item"><span class="dot accuracy"></span>准确性</span>
+                    <span class="legend-item"><span class="dot timeliness"></span>时效性</span>
+                    <span class="legend-item"><span class="dot consistency"></span>一致性</span>
+                </div>
+            </section>
+
+            <!-- 数据表质量检查 -->
+            <section class="card quality-card glow-border full-width">
+                <h3>🗂️ 数据表质量检查</h3>
+                <div class="table-quality-list">
+                    <div class="table-header">
+                        <span class="col-name">表名</span>
+                        <span class="col-records">记录数</span>
+                        <span class="col-null">空值率</span>
+                        <span class="col-duplicate">重复率</span>
+                        <span class="col-score">质量分</span>
+                        <span class="col-status">状态</span>
+                    </div>
+                    <div class="table-row">
+                        <span class="col-name">vessels</span>
+                        <span class="col-records">1,234</span>
+                        <span class="col-null">0.5%</span>
+                        <span class="col-duplicate">0.0%</span>
+                        <span class="col-score excellent">99.2</span>
+                        <span class="col-status"><span class="status-badge excellent">优秀</span></span>
+                    </div>
+                    <div class="table-row">
+                        <span class="col-name">companies</span>
+                        <span class="col-records">856</span>
+                        <span class="col-null">1.2%</span>
+                        <span class="col-duplicate">0.1%</span>
+                        <span class="col-score excellent">98.5</span>
+                        <span class="col-status"><span class="status-badge excellent">优秀</span></span>
+                    </div>
+                    <div class="table-row">
+                        <span class="col-name">assets</span>
+                        <span class="col-records">2,456</span>
+                        <span class="col-null">2.3%</span>
+                        <span class="col-duplicate">0.2%</span>
+                        <span class="col-score good">96.8</span>
+                        <span class="col-status"><span class="status-badge good">良好</span></span>
+                    </div>
+                    <div class="table-row">
+                        <span class="col-name">ais_tracks</span>
+                        <span class="col-records">2,000,000+</span>
+                        <span class="col-null">5.2%</span>
+                        <span class="col-duplicate">1.2%</span>
+                        <span class="col-score warning">89.5</span>
+                        <span class="col-status"><span class="status-badge warning">待优化</span></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 异常数据统计 -->
+            <section class="card quality-card glow-border">
+                <h3>⚠️ 异常数据统计</h3>
+                <div class="anomaly-stats">
+                    <div class="anomaly-item">
+                        <div class="anomaly-type">空值异常</div>
+                        <div class="anomaly-count">1,234</div>
+                        <div class="anomaly-trend down">-15%</div>
+                    </div>
+                    <div class="anomaly-item">
+                        <div class="anomaly-type">格式错误</div>
+                        <div class="anomaly-count">456</div>
+                        <div class="anomaly-trend down">-8%</div>
+                    </div>
+                    <div class="anomaly-item">
+                        <div class="anomaly-type">重复记录</div>
+                        <div class="anomaly-count">89</div>
+                        <div class="anomaly-trend up">+3%</div>
+                    </div>
+                    <div class="anomaly-item">
+                        <div class="anomaly-type">逻辑冲突</div>
+                        <div class="anomaly-count">23</div>
+                        <div class="anomaly-trend neutral">0%</div>
+                    </div>
+                </div>
+                <!-- 星座小船装饰 -->
+                <div class="ship-constellation">
+                    <svg viewBox="0 0 300 120" class="ship-svg">
+                        <!-- 船体星点 -->
+                        <circle cx="150" cy="80" r="2" class="star-point" style="animation-delay: 0s"/>
+                        <circle cx="120" cy="85" r="2" class="star-point" style="animation-delay: 0.2s"/>
+                        <circle cx="180" cy="85" r="2" class="star-point" style="animation-delay: 0.4s"/>
+                        <circle cx="110" cy="90" r="2" class="star-point" style="animation-delay: 0.6s"/>
+                        <circle cx="190" cy="90" r="2" class="star-point" style="animation-delay: 0.8s"/>
+
+                        <!-- 船帆星点 -->
+                        <circle cx="150" cy="40" r="2" class="star-point" style="animation-delay: 1s"/>
+                        <circle cx="140" cy="55" r="2" class="star-point" style="animation-delay: 1.2s"/>
+                        <circle cx="160" cy="55" r="2" class="star-point" style="animation-delay: 1.4s"/>
+                        <circle cx="135" cy="70" r="2" class="star-point" style="animation-delay: 1.6s"/>
+                        <circle cx="165" cy="70" r="2" class="star-point" style="animation-delay: 1.8s"/>
+
+                        <!-- 连接线（船体） -->
+                        <line x1="110" y1="90" x2="120" y2="85" class="constellation-line"/>
+                        <line x1="120" y1="85" x2="150" y2="80" class="constellation-line"/>
+                        <line x1="150" y1="80" x2="180" y2="85" class="constellation-line"/>
+                        <line x1="180" y1="85" x2="190" y2="90" class="constellation-line"/>
+                        <line x1="110" y1="90" x2="190" y2="90" class="constellation-line"/>
+
+                        <!-- 连接线（船帆） -->
+                        <line x1="150" y1="80" x2="150" y2="40" class="constellation-line"/>
+                        <line x1="150" y1="40" x2="140" y2="55" class="constellation-line"/>
+                        <line x1="140" y1="55" x2="135" y2="70" class="constellation-line"/>
+                        <line x1="135" y1="70" x2="150" y2="80" class="constellation-line"/>
+                        <line x1="150" y1="40" x2="160" y2="55" class="constellation-line"/>
+                        <line x1="160" y1="55" x2="165" y2="70" class="constellation-line"/>
+                        <line x1="165" y1="70" x2="150" y2="80" class="constellation-line"/>
+
+                        <!-- 波浪线 -->
+                        <path d="M 80 100 Q 100 95, 120 100 T 160 100 T 200 100 T 240 100" class="wave-line" style="animation-delay: 0s"/>
+                        <path d="M 70 105 Q 90 100, 110 105 T 150 105 T 190 105 T 230 105" class="wave-line" style="animation-delay: 0.5s"/>
+                    </svg>
+                </div>
+            </section>
+
+            <!-- 数据时效性监控 -->
+            <section class="card quality-card glow-border">
+                <h3>⏰ 数据时效性监控</h3>
+                <div class="timeliness-list">
+                    <div class="timeliness-item">
+                        <div class="time-header">
+                            <span class="time-source">AIS轨迹数据</span>
+                            <span class="time-status fresh">实时</span>
+                        </div>
+                        <div class="time-info">
+                            <span class="time-label">最后更新</span>
+                            <span class="time-value">2分钟前</span>
+                        </div>
+                        <div class="time-progress">
+                            <div class="time-bar fresh" style="width: 95%"></div>
+                        </div>
+                    </div>
+                    <div class="timeliness-item">
+                        <div class="time-header">
+                            <span class="time-source">风险评估数据</span>
+                            <span class="time-status fresh">实时</span>
+                        </div>
+                        <div class="time-info">
+                            <span class="time-label">最后更新</span>
+                            <span class="time-value">5分钟前</span>
+                        </div>
+                        <div class="time-progress">
+                            <div class="time-bar fresh" style="width: 90%"></div>
+                        </div>
+                    </div>
+                    <div class="timeliness-item">
+                        <div class="time-header">
+                            <span class="time-source">船舶画像数据</span>
+                            <span class="time-status normal">正常</span>
+                        </div>
+                        <div class="time-info">
+                            <span class="time-label">最后更新</span>
+                            <span class="time-value">1小时前</span>
+                        </div>
+                        <div class="time-progress">
+                            <div class="time-bar normal" style="width: 75%"></div>
+                        </div>
+                    </div>
+                    <div class="timeliness-item">
+                        <div class="time-header">
+                            <span class="time-source">汇率数据</span>
+                            <span class="time-status delayed">延迟</span>
+                        </div>
+                        <div class="time-info">
+                            <span class="time-label">最后更新</span>
+                            <span class="time-value">6小时前</span>
+                        </div>
+                        <div class="time-progress">
+                            <div class="time-bar delayed" style="width: 40%"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 数据质量规则 -->
+            <section class="card quality-card glow-border">
+                <h3>📋 数据质量规则</h3>
+                <div class="rule-list">
+                    <div class="rule-item">
+                        <div class="rule-header">
+                            <span class="rule-name">船舶IMO号唯一性</span>
+                            <span class="rule-status pass">通过</span>
+                        </div>
+                        <div class="rule-desc">检查vessels表中imo字段是否唯一</div>
+                        <div class="rule-result">
+                            <span>检查记录：1,234</span>
+                            <span>违规记录：0</span>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-header">
+                            <span class="rule-name">风险评分范围校验</span>
+                            <span class="rule-status pass">通过</span>
+                        </div>
+                        <div class="rule-desc">检查risk_score是否在0-100范围内</div>
+                        <div class="rule-result">
+                            <span>检查记录：5,678</span>
+                            <span>违规记录：0</span>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-header">
+                            <span class="rule-name">经纬度合法性</span>
+                            <span class="rule-status warning">警告</span>
+                        </div>
+                        <div class="rule-desc">检查经度(-180~180)和纬度(-90~90)</div>
+                        <div class="rule-result">
+                            <span>检查记录：2,000,000+</span>
+                            <span>违规记录：1,234</span>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-header">
+                            <span class="rule-name">时间戳一致性</span>
+                            <span class="rule-status pass">通过</span>
+                        </div>
+                        <div class="rule-desc">检查created_at不晚于updated_at</div>
+                        <div class="rule-result">
+                            <span>检查记录：全表</span>
+                            <span>违规记录：0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 质量改进建议 -->
+            <section class="card quality-card glow-border">
+                <h3>💡 质量改进建议</h3>
+                <div class="suggestion-list">
+                    <div class="suggestion-item priority-high">
+                        <div class="suggestion-header">
+                            <span class="priority-badge high">高优先级</span>
+                            <span class="suggestion-title">优化AIS轨迹数据清洗</span>
+                        </div>
+                        <div class="suggestion-desc">
+                            ais_tracks表存在5.2%的空值和1.2%的重复记录，建议增强数据清洗规则
+                        </div>
+                        <div class="suggestion-action">
+                            <button class="action-btn">查看详情</button>
+                            <button class="action-btn secondary">标记已读</button>
+                        </div>
+                    </div>
+                    <div class="suggestion-item priority-medium">
+                        <div class="suggestion-header">
+                            <span class="priority-badge medium">中优先级</span>
+                            <span class="suggestion-title">更新汇率数据源</span>
+                        </div>
+                        <div class="suggestion-desc">
+                            汇率数据更新延迟6小时，建议接入实时汇率API
+                        </div>
+                        <div class="suggestion-action">
+                            <button class="action-btn">查看详情</button>
+                            <button class="action-btn secondary">标记已读</button>
+                        </div>
+                    </div>
+                    <div class="suggestion-item priority-low">
+                        <div class="suggestion-header">
+                            <span class="priority-badge low">低优先级</span>
+                            <span class="suggestion-title">添加数据字典</span>
+                        </div>
+                        <div class="suggestion-desc">
+                            建议为核心表添加数据字典，提升数据可理解性
+                        </div>
+                        <div class="suggestion-action">
+                            <button class="action-btn">查看详情</button>
+                            <button class="action-btn secondary">标记已读</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 底部版权 -->
+    <footer class="footer-section">
+        <p>&copy; 2026 银航宝·深蓝启航 | Fan版权所有</p>
+    </footer>
+
+    <div class="toast" id="qualityToast" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/quality.js"></script>
+</body>
+</html>

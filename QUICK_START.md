@@ -1,160 +1,118 @@
-# Phase 2 快速启动指南
+# 🚀 银航宝系统 - 快速启动指南
 
-## 🚀 立即开始
+## 📋 前置要求
 
-你已经完成了所有准备工作！现在可以开始执行了。
+- Python 3.12+
+- PostgreSQL 14.20 (已配置)
+- MongoDB 7.0.29 (已配置)
+- 依赖库已安装
 
----
+## 🎯 快速启动（3步）
 
-## ✅ 准备工作检查清单
-
-- ✅ 数据生成脚本已修改（200万 → 2000万）
-- ✅ MongoDB连接正常（1.15.225.134:27017）
-- ✅ Spark作业已开发完成
-- ✅ behavior_api已集成到main.py
-- ✅ 执行脚本已创建
-- ✅ 文档已完善
-
----
-
-## 📋 三步执行流程
-
-### Step 1: 生成2000万条AIS数据（30-60分钟）
-
-**后台运行（推荐）**:
-```bash
-cd /Users/sunfanmacpro/Desktop/SilverNav-Treasure
-nohup python3 scripts/generate_ais_data.py > data_generation.log 2>&1 &
-echo "数据生成任务已启动，进程ID: $!"
-```
-
-**监控进度**:
-```bash
-# 实时查看日志
-tail -f data_generation.log
-
-# 或者每10秒检查一次数据量
-watch -n 10 'python3 -c "from pymongo import MongoClient; from app.config import settings; client = MongoClient(f\"mongodb://{settings.mongo_user}:{settings.mongo_password}@{settings.mongo_host}:{settings.mongo_port}/{settings.mongo_db}?authSource={settings.mongo_auth_source}\"); count = client[settings.mongo_db][\"ais_tracks\"].count_documents({}); print(f\"进度: {count:,} / 20,000,000 ({count/20000000*100:.2f}%)\"); client.close()"'
-```
-
----
-
-### Step 2: 运行Spark分析（10-20分钟）
-
-**等待Step 1完成后执行**:
-```bash
-cd /Users/sunfanmacpro/Desktop/SilverNav-Treasure
-
-# 设置环境变量
-export SILVERNAV_MONGO_HOST=1.15.225.134
-export SILVERNAV_MONGO_PORT=27017
-export SILVERNAV_MONGO_DB=silvernav
-export SILVERNAV_MONGO_USER=admin
-export SILVERNAV_MONGO_PASSWORD=sun2137405
-export SILVERNAV_MONGO_AUTH_SOURCE=admin
-
-# 运行Spark作业
-spark-submit \
-  --master local[*] \
-  --driver-memory 4g \
-  --executor-memory 4g \
-  --packages org.mongodb.spark:mongo-spark-connector_2.12:10.2.0 \
-  spark_jobs/ais_trajectory_analysis.py
-```
-
-**如果Spark未安装**:
-```bash
-# macOS
-brew install apache-spark
-
-# 或下载安装包
-# https://spark.apache.org/downloads.html
-```
-
----
-
-### Step 3: 启动API服务并测试
+### 1. 启动应用
 
 ```bash
 cd /Users/sunfanmacpro/Desktop/SilverNav-Treasure
-python3 main.py
+python main.py
 ```
 
-**测试API（另开终端）**:
+### 2. 验证功能（可选）
+
+在另一个终端运行：
+
 ```bash
-# 1. 获取总览
-curl -X GET http://localhost:8000/api/behavior/summary | jq
-
-# 2. 获取船舶轨迹
-curl -X POST http://localhost:8000/api/behavior/tracks \
-  -H "Content-Type: application/json" \
-  -d '{"imo_number": "IMO9000001", "limit": 100}' | jq
-
-# 3. 获取异常停泊
-curl -X POST http://localhost:8000/api/behavior/anomalies \
-  -H "Content-Type: application/json" \
-  -d '{"limit": 10}' | jq
+python verify_real_data.py
 ```
 
----
+### 3. 访问页面
 
-## 📊 当前状态
+打开浏览器访问：
 
-**数据生成任务**: 🔄 正在后台运行（任务ID: bd60131）
+- **总览大屏**: http://localhost:8000/dashboard
+- **实时监控大屏**: http://localhost:8000/monitor ⭐ 新增
+- **数据质量监控**: http://localhost:8000/quality ⭐ 新增
+- **船舶行为分析**: http://localhost:8000/behavior
+- **船舶画像**: http://localhost:8000/profile
+- **数据血缘**: http://localhost:8000/lineage
 
-**查看实时进度**:
+## 🎨 新增功能亮点
+
+### ⚡ 实时监控大屏
+- 系统资源监控（CPU/内存/磁盘）
+- 数据库连接池状态（PostgreSQL + MongoDB）
+- API调用统计
+- 实时告警信息
+- 数据流量监控
+
+### 🎯 数据质量监控
+- 四维质量评分（完整性/准确性/时效性/一致性）
+- 数据表质量检查（5张核心表）
+- 异常数据统计
+- 质量规则检查
+- 数据时效性监控
+- 智能改进建议
+
+## 📊 真实数据来源
+
+所有监控数据都来自真实数据库：
+
+| 数据项 | 来源 |
+|-------|------|
+| CPU/内存/磁盘 | psutil库 |
+| PostgreSQL连接池 | pg_stat_activity |
+| MongoDB连接池 | serverStatus |
+| 数据质量指标 | vessels/companies/assets/risk_assessments/ais_tracks |
+| 异常统计 | 数据库实时查询 |
+
+## 🔧 故障排查
+
+### 问题1: 应用启动失败
+
 ```bash
-# 方法1: 查看日志
-tail -f /private/tmp/claude-501/-Users-sunfanmacpro-Desktop-SilverNav-Treasure/tasks/bd60131.output
+# 检查依赖
+pip install fastapi uvicorn psycopg2-binary pymongo passlib[bcrypt] pydantic psutil
 
-# 方法2: 查看MongoDB数据量
-python3 -c "from pymongo import MongoClient; from app.config import settings; client = MongoClient(f'mongodb://{settings.mongo_user}:{settings.mongo_password}@{settings.mongo_host}:{settings.mongo_port}/{settings.mongo_db}?authSource={settings.mongo_auth_source}'); count = client[settings.mongo_db]['ais_tracks'].count_documents({}); print(f'当前: {count:,} / 20,000,000 ({count/20000000*100:.2f}%)'); client.close()"
+# 检查数据库连接
+python scripts/test_mongo_connection.py
 ```
 
----
+### 问题2: 页面显示"连接失败"
 
-## 📈 预期时间线
+- 确认应用已启动（python main.py）
+- 检查端口8000是否被占用
+- 查看控制台错误信息
 
-| 阶段 | 耗时 | 状态 |
-|------|------|------|
-| 数据生成 | 30-60分钟 | 🔄 进行中 |
-| Spark分析 | 10-20分钟 | ⏳ 等待中 |
-| API测试 | 5分钟 | ⏳ 等待中 |
-| **总计** | **45-85分钟** | - |
+### 问题3: 数据不更新
 
----
+- 检查数据库连接是否正常
+- 查看浏览器控制台（F12）的网络请求
+- 确认API返回数据正常
 
-## 🎯 完成标准
+## 📚 相关文档
 
-### 数据层
-- [ ] MongoDB有20,000,000条AIS记录
-- [ ] 100艘船舶都有数据
-- [ ] 时间跨度约2.5年
-- [ ] 数据大小约10GB
+- **详细功能说明**: NEW_PAGES_README.md
+- **真实数据集成**: REAL_DATA_INTEGRATION.md
+- **完成报告**: COMPLETION_REPORT.md
+- **项目路线图**: ROADMAP.md
 
-### 处理层
-- [ ] Spark生成vessel_statistics集合
-- [ ] Spark生成ais_anomalies集合
-- [ ] 检测出异常停泊记录
+## 💡 使用技巧
 
-### 服务层
-- [ ] 5个API端点全部可用
-- [ ] API响应时间<500ms
+1. **页面导航**: 在dashboard页面右下角点击"页面导航"按钮，可以快速跳转到所有页面
 
----
+2. **自动刷新**: 
+   - 实时监控大屏：5秒自动刷新
+   - 数据质量监控：10-60秒自动刷新
 
-## 📞 需要帮助？
+3. **返回大屏**: 所有子页面左上角都有"返回大屏"按钮
 
-查看详细文档：
-- `PHASE2_COMPLETE_GUIDE.md` - 完整执行指南
-- `PHASE2_EXECUTION_PLAN.md` - 详细执行计划
-- `PHASE2_PROGRESS_TRACKER.md` - 进度跟踪
+## 🎉 开始使用
 
-联系方式：
-- 邮箱: fandesunstar@outlook.com
-- 微信: +86 18601657185
+```bash
+# 一键启动
+python main.py
 
----
+# 然后访问
+open http://localhost:8000/dashboard
+```
 
-**更新时间**: 2026-02-21
-**当前任务**: 生成2000万条AIS数据（进行中）
+**祝您使用愉快！** 🚀

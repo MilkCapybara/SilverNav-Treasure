@@ -39,9 +39,39 @@ from app.config import settings
 from app.database import db_conn, init_pools, close_pools, query_one, query_all
 from app.utils import _serialize_row, _serialize_rows
 
+# 导入behavior_api路由
+try:
+    from app.behavior_api import router as behavior_router
+except ImportError:
+    behavior_router = None
+
+# 导入profile_api路由
+try:
+    from app.profile_api import router as profile_router
+except ImportError:
+    profile_router = None
+
+# 导入quality_api路由
+try:
+    from app.quality_api import router as quality_router
+except ImportError:
+    quality_router = None
+
 APP_TZ = ZoneInfo("Asia/Shanghai")
 
 app = FastAPI(title="银航宝·深蓝启航")
+
+# 注册behavior_api路由
+if behavior_router is not None:
+    app.include_router(behavior_router)
+
+# 注册profile_api路由
+if profile_router is not None:
+    app.include_router(profile_router)
+
+# 注册quality_api路由
+if quality_router is not None:
+    app.include_router(quality_router)
 
 # 静态文件与模板
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -397,6 +427,24 @@ async def detail(request: Request):
 async def behavior(request: Request):
     """船舶行为分析页面 - 不需要登录验证"""
     return templates.TemplateResponse("behavior.html", {"request": request})
+
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile(request: Request):
+    """船舶画像页面 - 不需要登录验证"""
+    return templates.TemplateResponse("profile.html", {"request": request})
+
+
+@app.get("/lineage", response_class=HTMLResponse)
+async def lineage(request: Request):
+    """数据血缘页面 - 不需要登录验证"""
+    return templates.TemplateResponse("lineage.html", {"request": request})
+
+
+@app.get("/quality", response_class=HTMLResponse)
+async def quality(request: Request):
+    """数据质量监控页面 - 不需要登录验证"""
+    return templates.TemplateResponse("quality.html", {"request": request})
 
 
 @app.post("/api/login")

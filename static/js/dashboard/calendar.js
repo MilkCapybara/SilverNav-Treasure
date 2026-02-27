@@ -36,6 +36,8 @@ function initDatePicker() {
         const iso = formatDateISO(selected);
         window.Dash.baseDate = iso;
         dateValue.textContent = formatDateDisplay(selected);
+        // 保存到localStorage，以便其他页面同步
+        localStorage.setItem("silvernav_base_date", iso);
     };
 
     const render = () => {

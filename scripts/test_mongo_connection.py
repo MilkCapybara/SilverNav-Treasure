@@ -40,9 +40,6 @@ def test_mongo_connection():
         doc = test_collection.find_one({"test": "hello"})
         print(f"✅ 查询成功: {doc}")
 
-        # 删除测试数据
-        test_collection.delete_one({"_id": result.inserted_id})
-        print(f"✅ 删除成功")
 
         print("\n" + "=" * 60)
         print("✅ MongoDB连接测试通过！")
