@@ -9,10 +9,13 @@ from datetime import datetime, timedelta
 import hashlib
 
 # Redis连接配置
+from .config import settings
+
 REDIS_CONFIG = {
-    'host': 'localhost',
-    'port': 6379,
-    'db': 0,
+    'host': settings.redis_host,
+    'port': settings.redis_port,
+    'db': settings.redis_db,
+    'password': settings.redis_password,
     'decode_responses': True,
     'socket_connect_timeout': 5,
     'socket_timeout': 5,

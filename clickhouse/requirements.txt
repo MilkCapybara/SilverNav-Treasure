@@ -1,0 +1,10 @@
+# ClickHouse 迁移所需的 Python 依赖
+
+# ClickHouse 驱动
+clickhouse-driver>=0.2.6
+
+# PostgreSQL 驱动
+psycopg2-binary>=2.9.9
+
+# HTTP 请求（用于测试）
+requests>=2.31.0

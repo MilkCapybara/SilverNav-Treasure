@@ -38,6 +38,28 @@ except ImportError:  # pragma: no cover
 from app.config import settings
 from app.database import db_conn, init_pools, close_pools, query_one, query_all
 from app.utils import _serialize_row, _serialize_rows
+from app.cache import cache
+
+# 导入 ClickHouse 客户端
+try:
+    from app.clickhouse_client import (
+        init_clickhouse,
+        close_clickhouse,
+        check_clickhouse_health,
+        get_fx_rate_ch,
+        get_dashboard_summary_ch,
+        get_dashboard_alerts_ch,
+        get_dashboard_npl_ch,
+        get_dashboard_risk_levels_ch,
+        get_dashboard_trend_ch,
+        get_dashboard_vessel_top_ch,
+        get_dashboard_credit_ch,
+        get_dashboard_risk_factors_ch
+    )
+    CLICKHOUSE_AVAILABLE = True
+except ImportError:
+    CLICKHOUSE_AVAILABLE = False
+    print("⚠️ ClickHouse 模块未安装，将仅使用 PostgreSQL")
 
 # 导入behavior_api路由
 try:
@@ -118,10 +140,23 @@ def on_startup() -> None:
     init_pools()
     ensure_root_user()
 
+    # 初始化 ClickHouse 连接
+    if CLICKHOUSE_AVAILABLE:
+        try:
+            init_clickhouse()
+            print("✅ ClickHouse 已启用")
+        except Exception as e:
+            print(f"⚠️ ClickHouse 初始化失败，将使用 PostgreSQL: {e}")
+
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
     close_pools()
+    if CLICKHOUSE_AVAILABLE:
+        try:
+            close_clickhouse()
+        except Exception:
+            pass
 
 
 def _hash_password(password: str) -> str:
@@ -965,244 +1000,376 @@ async def dashboard_fx(request: Request, payload: DashboardQuery):
     return JSONResponse(response)
 
 
+@app.get("/api/clickhouse/health")
+async def clickhouse_health():
+    """检查 ClickHouse 连接状态"""
+    if not CLICKHOUSE_AVAILABLE:
+        return JSONResponse({
+            "success": True,
+            "clickhouse_enabled": False,
+            "message": "ClickHouse 模块未安装"
+        })
+
+    is_healthy = check_clickhouse_health()
+    return JSONResponse({
+        "success": True,
+        "clickhouse_enabled": is_healthy,
+        "message": "ClickHouse 连接正常" if is_healthy else "ClickHouse 连接失败，使用 PostgreSQL"
+    })
+
+
 @app.post("/api/dashboard")
 async def dashboard_data(request: Request, payload: DashboardQuery):
+    """
+    Dashboard 数据查询接口
+    优先使用 ClickHouse，失败时降级到 PostgreSQL
+    支持 Redis 缓存加速
+    """
+    import time
+
     session = get_session(request)
     role = "admin" if session.get("root") else "readonly"
 
     base, currency, start_date, end_date, soon_end, fx_start = dashboard_params(payload)
 
+    # ============================================================================
+    # 1. 尝试从 Redis 缓存获取
+    # ============================================================================
+    cache_key_params = {
+        'base_date': str(base),
+        'range': payload.range,
+        'currency': currency,
+        'start_date': str(start_date),
+        'end_date': str(end_date)
+    }
+
+    cached_data = cache.get('dashboard', **cache_key_params)
+    if cached_data:
+        print(f"✅ 缓存命中: Dashboard 数据")
+        return JSONResponse({
+            **cached_data,
+            'data_source': 'cache',
+            'cached': True
+        })
+
+    # ============================================================================
+    # 2. 缓存未命中，查询数据库
+    # ============================================================================
+    print(f"⚠️ 缓存未命中，查询数据库")
+
+    # 尝试使用 ClickHouse
+    use_clickhouse = CLICKHOUSE_AVAILABLE and check_clickhouse_health()
+
     try:
-        with db_conn(role) as conn:
-            fx_rate = get_fx_rate(conn, currency, end_date)
+        if use_clickhouse:
+            # ============================================================================
+            # ClickHouse 查询路径（快速）
+            # ============================================================================
+            print(f"🚀 使用 ClickHouse 查询 Dashboard 数据")
+            query_start = time.time()
 
-            # Optimized: Combine summary and risk_distribution into single query
-            summary_and_distribution = query_all(
-                conn,
-                """
-                WITH assets_base AS (
-                    SELECT
-                        a.risk_level,
-                        a.outstanding_amount * %s AS amount_converted
-                    FROM financial_assets a
-                    WHERE a.is_active = TRUE
-                      AND a.start_date <= %s
-                      AND a.maturity_date >= %s
-                )
-                SELECT
-                    risk_level,
-                    COUNT(*) AS asset_count,
-                    COALESCE(SUM(amount_converted), 0) AS exposure_amount
-                FROM assets_base
-                GROUP BY risk_level
-                ORDER BY risk_level
-                """,
-                (fx_rate, end_date, start_date),
-            )
+            # 获取汇率
+            fx_rate = get_fx_rate_ch(currency, end_date)
 
-            # Calculate summary from distribution results
-            total_exposure = sum(float(row.get("exposure_amount", 0) or 0) for row in summary_and_distribution)
-            high_risk_exposure = sum(
-                float(row.get("exposure_amount", 0) or 0)
-                for row in summary_and_distribution
-                if row.get("risk_level") == "high"
+            # 1. 总体风险敞口 + 风险分布
+            summary_data = get_dashboard_summary_ch(start_date, end_date, fx_rate)
+            total_exposure = summary_data['total_exposure']
+            high_risk_exposure = summary_data['high_risk_exposure']
+            risk_distribution = summary_data['risk_distribution']
+
+            # 2. 高风险预警
+            alerts_data = get_dashboard_alerts_ch(fx_rate)
+            high_risk_assets = alerts_data['alert_list']
+            high_risk_company_count = alerts_data['high_risk_company_count']
+            high_risk_vessel_count = alerts_data['high_risk_vessel_count']
+
+            # 3. 不良资产监控
+            npl_stats = get_dashboard_npl_ch(start_date, end_date, fx_rate)
+
+            # 4. 风险等级分布
+            risk_levels_data = get_dashboard_risk_levels_ch()
+            company_risk = risk_levels_data['company_distribution']
+            vessel_risk = risk_levels_data['vessel_distribution']
+
+            # 5. 船舶风险 Top10
+            vessel_top = get_dashboard_vessel_top_ch()
+
+            # 6. 风险趋势（近30天）
+            trend_data = get_dashboard_trend_ch(
+                end_date - timedelta(days=30),
+                end_date,
+                fx_rate
             )
-            summary = {
-                "total_exposure": total_exposure,
-                "high_risk_exposure": high_risk_exposure
+            trend_risk = [{'date': d['date'], 'avg_risk_score': d['avg_risk_score']} for d in trend_data]
+            trend_exposure = [{'date': d['date'], 'high_risk_exposure': d['high_risk_exposure']} for d in trend_data]
+
+            # 7. 授信使用
+            credit_data = get_dashboard_credit_ch(fx_rate)
+            credit_usage = {
+                'used_total': credit_data['used_total'],
+                'limit_total': credit_data['suggested_total']
             }
-            risk_distribution = summary_and_distribution
+            credit_top = credit_data['credit_top_list']
 
-            high_risk_assets = query_all(
-                conn,
-                """
-                SELECT
-                    a.id,
-                    a.contract_no,
-                    (a.outstanding_amount * %s) AS outstanding_amount,
-                    %s AS currency,
-                    a.risk_score,
-                    a.risk_level,
-                    c.company_name,
-                    v.vessel_name
-                FROM financial_assets a
-                LEFT JOIN companies c ON c.id = a.company_id
-                LEFT JOIN vessels v ON v.id = a.vessel_id
-                WHERE a.is_active = TRUE
-                  AND a.risk_level = 'high'
-                ORDER BY a.outstanding_amount DESC NULLS LAST
-                LIMIT 10
-                """,
-                (fx_rate, currency),
+            # 8. 风险因子贡献
+            risk_factors = get_dashboard_risk_factors_ch(start_date, end_date)
+
+            # 9. 资产总数和高风险资产数
+            total_asset_count = sum(row['asset_count'] for row in risk_distribution)
+            high_risk_asset_count = sum(
+                row['asset_count'] for row in risk_distribution
+                if row['risk_level'] == 'high'
             )
 
-            npl_stats = query_one(
-                conn,
-                """
-                WITH assets_base AS (
+            # 10. 币种分布（使用 PostgreSQL，因为 ClickHouse 没有这个查询）
+            with db_conn(role) as conn:
+                currency_distribution = get_currency_distribution(conn, fx_rate)
+
+            query_time = time.time() - query_start
+            print(f"✅ ClickHouse 查询完成，耗时: {query_time:.3f}秒")
+            data_source = "clickhouse"
+
+        else:
+            raise Exception("ClickHouse 不可用，降级到 PostgreSQL")
+
+    except Exception as e:
+        # ============================================================================
+        # PostgreSQL 降级路径（原有逻辑）
+        # ============================================================================
+        print(f"⚠️ ClickHouse 查询失败: {e}")
+        print(f"🔄 降级到 PostgreSQL 查询")
+        query_start = time.time()
+
+        try:
+            with db_conn(role) as conn:
+                fx_rate = get_fx_rate(conn, currency, end_date)
+
+                # Optimized: Combine summary and risk_distribution into single query
+                summary_and_distribution = query_all(
+                    conn,
+                    """
+                    WITH assets_base AS (
+                        SELECT
+                            a.risk_level,
+                            a.outstanding_amount * %s AS amount_converted
+                        FROM financial_assets a
+                        WHERE a.is_active = TRUE
+                          AND a.start_date <= %s
+                          AND a.maturity_date >= %s
+                    )
                     SELECT
-                        a.is_non_performing,
-                        a.outstanding_amount * %s AS amount_converted
-                    FROM financial_assets a
-                    WHERE a.is_active = TRUE
-                      AND a.start_date <= %s
-                      AND a.maturity_date >= %s
+                        risk_level,
+                        COUNT(*) AS asset_count,
+                        COALESCE(SUM(amount_converted), 0) AS exposure_amount
+                    FROM assets_base
+                    GROUP BY risk_level
+                    ORDER BY risk_level
+                    """,
+                    (fx_rate, end_date, start_date),
                 )
-                SELECT
-                    COUNT(*) FILTER (WHERE is_non_performing) AS npl_count,
-                    COUNT(*) AS total_count,
-                    COALESCE(SUM(CASE WHEN is_non_performing THEN amount_converted ELSE 0 END), 0) AS npl_amount,
-                    COALESCE(SUM(amount_converted), 0) AS total_amount
-                FROM assets_base
-                """,
-                (fx_rate, end_date, start_date),
-            )
 
-            company_risk = query_all(
-                conn,
-                """
-                SELECT risk_level, COUNT(*) AS count
-                FROM companies
-                WHERE is_active = TRUE
-                GROUP BY risk_level
-                ORDER BY risk_level
-                """,
-                (),
-            )
+                # Calculate summary from distribution results
+                total_exposure = sum(float(row.get("exposure_amount", 0) or 0) for row in summary_and_distribution)
+                high_risk_exposure = sum(
+                    float(row.get("exposure_amount", 0) or 0)
+                    for row in summary_and_distribution
+                    if row.get("risk_level") == "high"
+                )
+                risk_distribution = summary_and_distribution
 
-            vessel_risk = query_all(
-                conn,
-                """
-                SELECT risk_level, COUNT(*) AS count
-                FROM vessels
-                WHERE is_active = TRUE
-                GROUP BY risk_level
-                ORDER BY risk_level
-                """,
-                (),
-            )
-
-            # Vessel top query - simplified to use vessel table directly for speed
-            vessel_top = query_all(
-                conn,
-                """
-                SELECT
-                    v.vessel_name,
-                    v.imo_number,
-                    c.company_name,
-                    v.asset_risk_score as risk_score,
-                    v.risk_level,
-                    CURRENT_DATE as assessment_date
-                FROM vessels v
-                LEFT JOIN companies c ON c.id = v.owner_company_id
-                WHERE v.is_active = TRUE
-                  AND v.asset_risk_score IS NOT NULL
-                ORDER BY v.asset_risk_score DESC NULLS LAST
-                LIMIT 10
-                """,
-                (),
-            )
-
-            # Trend queries - optimized to 30 days for faster response
-            trend_risk = query_all(
-                conn,
-                """
-                SELECT assessment_date AS date, AVG(risk_score) AS avg_risk_score
-                FROM vessel_risk_history
-                WHERE assessment_date >= CURRENT_DATE - INTERVAL '30 days'
-                GROUP BY assessment_date
-                ORDER BY assessment_date
-                """,
-                (),
-            )
-
-            trend_exposure = query_all(
-                conn,
-                """
-                SELECT
-                    a.start_date AS date,
-                    COALESCE(SUM(a.outstanding_amount * %s), 0) AS high_risk_exposure
-                FROM financial_assets a
-                WHERE a.risk_level = 'high'
-                  AND a.start_date >= CURRENT_DATE - INTERVAL '30 days'
-                  AND a.is_active = TRUE
-                GROUP BY a.start_date
-                ORDER BY a.start_date
-                """,
-                (fx_rate,),
-            )
-
-            credit_usage = get_credit_usage(conn, fx_rate)
-
-            credit_top = query_all(
-                conn,
-                """
-                SELECT c.company_name, u.used_amount
-                FROM (
+                high_risk_assets = query_all(
+                    conn,
+                    """
                     SELECT
-                        a.company_id,
-                        SUM(a.outstanding_amount * %s) AS used_amount
+                        a.id,
+                        a.contract_no,
+                        (a.outstanding_amount * %s) AS outstanding_amount,
+                        %s AS currency,
+                        a.risk_score,
+                        a.risk_level,
+                        c.company_name,
+                        v.vessel_name
                     FROM financial_assets a
+                    LEFT JOIN companies c ON c.id = a.company_id
+                    LEFT JOIN vessels v ON v.id = a.vessel_id
                     WHERE a.is_active = TRUE
-                    GROUP BY a.company_id
-                ) u
-                LEFT JOIN companies c ON c.id = u.company_id
-                ORDER BY u.used_amount DESC NULLS LAST
-                LIMIT 5
-                """,
-                (fx_rate,),
-            )
+                      AND a.risk_level = 'high'
+                    ORDER BY a.outstanding_amount DESC NULLS LAST
+                    LIMIT 10
+                    """,
+                    (fx_rate, currency),
+                )
 
-            # Risk factors query - optimized to 7 days for faster response
-            risk_factors = query_all(
-                conn,
-                """
-                SELECT
-                    factor_name,
-                    AVG(factor_value) as avg_value,
-                    SUM(contribution) as total_contribution
-                FROM risk_factor_contribution
-                WHERE created_at >= %s::date - INTERVAL '30 days'
-                  AND created_at <= %s::date
-                GROUP BY factor_name
-                ORDER BY SUM(ABS(contribution)) DESC
-                LIMIT 5
-                """,
-                (base, base),
-            )
+                npl_stats = query_one(
+                    conn,
+                    """
+                    WITH assets_base AS (
+                        SELECT
+                            a.is_non_performing,
+                            a.outstanding_amount * %s AS amount_converted
+                        FROM financial_assets a
+                        WHERE a.is_active = TRUE
+                          AND a.start_date <= %s
+                          AND a.maturity_date >= %s
+                    )
+                    SELECT
+                        COUNT(*) FILTER (WHERE is_non_performing) AS npl_count,
+                        COUNT(*) AS total_count,
+                        COALESCE(SUM(CASE WHEN is_non_performing THEN amount_converted ELSE 0 END), 0) AS npl_amount,
+                        COALESCE(SUM(amount_converted), 0) AS total_amount
+                    FROM assets_base
+                    """,
+                    (fx_rate, end_date, start_date),
+                )
 
-            high_risk_company_count = query_one(
-                conn,
-                """
-                SELECT COUNT(*) AS count
-                FROM companies
-                WHERE is_active = TRUE AND risk_level = 'high'
-                """,
-                (),
-            )
+                company_risk = query_all(
+                    conn,
+                    """
+                    SELECT risk_level, COUNT(*) AS count
+                    FROM companies
+                    WHERE is_active = TRUE
+                    GROUP BY risk_level
+                    ORDER BY risk_level
+                    """,
+                    (),
+                )
 
-            high_risk_vessel_count = query_one(
-                conn,
-                """
-                SELECT COUNT(*) AS count
-                FROM vessels
-                WHERE is_active = TRUE AND risk_level = 'high'
-                """,
-                (),
-            )
+                vessel_risk = query_all(
+                    conn,
+                    """
+                    SELECT risk_level, COUNT(*) AS count
+                    FROM vessels
+                    WHERE is_active = TRUE
+                    GROUP BY risk_level
+                    ORDER BY risk_level
+                    """,
+                    (),
+                )
 
-            asset_stats = get_asset_stats(conn, fx_rate)
-            currency_distribution = get_currency_distribution(conn, fx_rate)
+                vessel_top = query_all(
+                    conn,
+                    """
+                    SELECT
+                        v.vessel_name,
+                        v.imo_number,
+                        c.company_name,
+                        v.asset_risk_score as risk_score,
+                        v.risk_level,
+                        CURRENT_DATE as assessment_date
+                    FROM vessels v
+                    LEFT JOIN companies c ON c.id = v.owner_company_id
+                    WHERE v.is_active = TRUE
+                      AND v.asset_risk_score IS NOT NULL
+                    ORDER BY v.asset_risk_score DESC NULLS LAST
+                    LIMIT 10
+                    """,
+                    (),
+                )
 
-    except Exception as exc:
-        return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+                trend_risk = query_all(
+                    conn,
+                    """
+                    SELECT assessment_date AS date, AVG(risk_score) AS avg_risk_score
+                    FROM vessel_risk_history
+                    WHERE assessment_date >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY assessment_date
+                    ORDER BY assessment_date
+                    """,
+                    (),
+                )
 
-    total_exposure = summary.get("total_exposure", 0) or 0
-    high_risk_exposure = summary.get("high_risk_exposure", 0) or 0
+                trend_exposure = query_all(
+                    conn,
+                    """
+                    SELECT
+                        a.start_date AS date,
+                        COALESCE(SUM(a.outstanding_amount * %s), 0) AS high_risk_exposure
+                    FROM financial_assets a
+                    WHERE a.risk_level = 'high'
+                      AND a.start_date >= CURRENT_DATE - INTERVAL '30 days'
+                      AND a.is_active = TRUE
+                    GROUP BY a.start_date
+                    ORDER BY a.start_date
+                    """,
+                    (fx_rate,),
+                )
+
+                credit_usage = get_credit_usage(conn, fx_rate)
+
+                credit_top = query_all(
+                    conn,
+                    """
+                    SELECT c.company_name, u.used_amount
+                    FROM (
+                        SELECT
+                            a.company_id,
+                            SUM(a.outstanding_amount * %s) AS used_amount
+                        FROM financial_assets a
+                        WHERE a.is_active = TRUE
+                        GROUP BY a.company_id
+                    ) u
+                    LEFT JOIN companies c ON c.id = u.company_id
+                    ORDER BY u.used_amount DESC NULLS LAST
+                    LIMIT 5
+                    """,
+                    (fx_rate,),
+                )
+
+                risk_factors = query_all(
+                    conn,
+                    """
+                    SELECT
+                        factor_name,
+                        AVG(factor_value) as avg_value,
+                        SUM(contribution) as total_contribution
+                    FROM risk_factor_contribution
+                    WHERE created_at >= %s::date - INTERVAL '30 days'
+                      AND created_at <= %s::date
+                    GROUP BY factor_name
+                    ORDER BY SUM(ABS(contribution)) DESC
+                    LIMIT 5
+                    """,
+                    (base, base),
+                )
+
+                high_risk_company_count = query_one(
+                    conn,
+                    """
+                    SELECT COUNT(*) AS count
+                    FROM companies
+                    WHERE is_active = TRUE AND risk_level = 'high'
+                    """,
+                    (),
+                ).get("count", 0)
+
+                high_risk_vessel_count = query_one(
+                    conn,
+                    """
+                    SELECT COUNT(*) AS count
+                    FROM vessels
+                    WHERE is_active = TRUE AND risk_level = 'high'
+                    """,
+                    (),
+                ).get("count", 0)
+
+                asset_stats = get_asset_stats(conn, fx_rate)
+                total_asset_count = asset_stats.get("total_count", 0)
+                currency_distribution = get_currency_distribution(conn, fx_rate)
+
+            query_time = time.time() - query_start
+            print(f"✅ PostgreSQL 查询完成，耗时: {query_time:.3f}秒")
+            data_source = "postgresql"
+
+        except Exception as exc:
+            return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})
+
+    # 构建响应
     high_risk_ratio = (high_risk_exposure / total_exposure) if total_exposure else 0
 
     response = {
         **dashboard_meta(base, payload, currency),
+        "data_source": data_source,
+        "query_time": f"{query_time:.3f}s",
         "summary": {
             "total_exposure": total_exposure,
             "high_risk_exposure": high_risk_exposure,
@@ -1210,10 +1377,10 @@ async def dashboard_data(request: Request, payload: DashboardQuery):
             "risk_distribution": risk_distribution,
         },
         "alerts": {
-            "high_risk_company_count": high_risk_company_count.get("count", 0),
-            "high_risk_vessel_count": high_risk_vessel_count.get("count", 0),
+            "high_risk_company_count": high_risk_company_count,
+            "high_risk_vessel_count": high_risk_vessel_count,
             "high_risk_assets": high_risk_assets,
-            "total_asset_count": asset_stats.get("total_count", 0),
+            "total_asset_count": total_asset_count,
         },
         "npl": {
             "npl_count": npl_stats.get("npl_count", 0),
@@ -1237,6 +1404,15 @@ async def dashboard_data(request: Request, payload: DashboardQuery):
         },
         "risk_factors": risk_factors,
     }
+
+    # ============================================================================
+    # 3. 存入 Redis 缓存（5分钟TTL）
+    # ============================================================================
+    try:
+        cache.set('dashboard', response, ttl=300, **cache_key_params)
+        print(f"✅ 数据已缓存: Dashboard (TTL: 300s)")
+    except Exception as cache_error:
+        print(f"⚠️ 缓存存储失败: {cache_error}")
 
     return JSONResponse(response)
 
@@ -1803,7 +1979,8 @@ async def detail_npl(request: Request, payload: DashboardQuery):
                 SELECT
                     TO_CHAR(month_date, 'YYYY-MM') AS month,
                     COUNT(CASE WHEN is_non_performing = TRUE THEN 1 END) AS npl_count,
-                    COALESCE(SUM(CASE WHEN is_non_performing = TRUE THEN outstanding_amount * %s ELSE 0 END), 0) AS npl_amount
+                    COALESCE(SUM(CASE WHEN is_non_performing = TRUE THEN outstanding_amount * %s ELSE 0 END), 0) AS npl_amount,
+                    COALESCE(SUM(outstanding_amount * %s), 0) AS total_amount
                 FROM (
                     SELECT
                         generate_series(
@@ -1818,7 +1995,7 @@ async def detail_npl(request: Request, payload: DashboardQuery):
                 GROUP BY month_date
                 ORDER BY month_date
                 """,
-                (fx_rate, end_date, end_date),
+                (fx_rate, fx_rate, end_date, end_date),
             )
             print(f"[DEBUG] npl: Step 10: npl_trend OK", file=sys.stderr)
             print(f"[DEBUG] npl: Step 11: All queries completed successfully", file=sys.stderr)

@@ -6,6 +6,282 @@ const Detail = {
     unit: parseInt(localStorage.getItem("silvernav_unit") || "10000"),
 };
 
+// 通用饼图渲染函数（参考船舶画像页面）- 升级版：炫彩发光效果
+function renderPieChart(container, data, options = {}) {
+    if (!container || !data || data.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无数据</p>';
+        return;
+    }
+
+    const {
+        labelKey = 'label',
+        valueKey = 'value',
+        colors = [
+            '#3cebdc', '#4fa8ff', '#ffd65c', '#ff9f1c',
+            '#ff5a7a', '#7ef7f0', '#ffb703', '#4dd4ac'
+        ],
+        maxItems = 8,
+        showPercentage = true,
+        showValue = true,
+        formatValue = (v) => v.toLocaleString(),
+        enableHover = true  // 新增：是否启用悬浮效果
+    } = options;
+
+    // 取前N个数据
+    const topData = data.slice(0, maxItems);
+    const total = topData.reduce((sum, item) => sum + (item[valueKey] || 0), 0);
+
+    if (total === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">暂无有效数据</p>';
+        return;
+    }
+
+    // 生成唯一ID用于渐变和滤镜
+    const chartId = 'pie-' + Math.random().toString(36).substr(2, 9);
+
+    // 生成饼图SVG
+    let currentAngle = 0;
+    const radius = 80;
+    const centerX = 100;
+    const centerY = 100;
+
+    const paths = topData.map((item, index) => {
+        const value = item[valueKey] || 0;
+        const percentage = value / total;
+        const angle = percentage * 360;
+        const endAngle = currentAngle + angle;
+
+        const startX = centerX + radius * Math.cos((currentAngle - 90) * Math.PI / 180);
+        const startY = centerY + radius * Math.sin((currentAngle - 90) * Math.PI / 180);
+        const endX = centerX + radius * Math.cos((endAngle - 90) * Math.PI / 180);
+        const endY = centerY + radius * Math.sin((endAngle - 90) * Math.PI / 180);
+
+        const largeArc = angle > 180 ? 1 : 0;
+        const path = `M ${centerX} ${centerY} L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY} Z`;
+
+        currentAngle = endAngle;
+
+        return {
+            path,
+            color: colors[index % colors.length],
+            label: item[labelKey],
+            value: value,
+            percentage: (percentage * 100).toFixed(1)
+        };
+    });
+
+    // 生成炫彩渐变和发光滤镜
+    const gradients = paths.map((p, i) => `
+        <linearGradient id="${chartId}-gradient-${i}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${p.color};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${p.color};stop-opacity:0.6" />
+        </linearGradient>
+    `).join('');
+
+    const filters = `
+        <filter id="${chartId}-glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+        <filter id="${chartId}-glow-hover">
+            <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    `;
+
+    // 生成HTML
+    const svgPaths = paths.map((p, i) => `
+        <path
+            d="${p.path}"
+            fill="url(#${chartId}-gradient-${i})"
+            stroke="${p.color}"
+            stroke-width="2"
+            class="pie-slice"
+            data-label="${p.label}"
+            data-value="${formatValue(p.value)}"
+            data-percentage="${p.percentage}%"
+            style="filter: url(#${chartId}-glow); cursor: pointer; transition: all 0.3s ease;"
+            onmouseover="this.style.filter='url(#${chartId}-glow-hover)'; this.style.opacity='1'; this.style.transform='scale(1.05)'; this.style.transformOrigin='${centerX}px ${centerY}px';"
+            onmouseout="this.style.filter='url(#${chartId}-glow)'; this.style.opacity='0.9'; this.style.transform='scale(1)';"
+        />
+    `).join('');
+
+    const legendItems = paths.map(p => {
+        let valueText = '';
+        if (showValue && showPercentage) {
+            valueText = `${formatValue(p.value)} (${p.percentage}%)`;
+        } else if (showValue) {
+            valueText = formatValue(p.value);
+        } else if (showPercentage) {
+            valueText = `${p.percentage}%`;
+        }
+
+        return `
+            <div class="pie-legend-item" style="transition: all 0.3s ease;">
+                <div class="pie-legend-color" style="background: ${p.color}; box-shadow: 0 0 10px ${p.color};"></div>
+                <span class="pie-legend-label">${p.label}</span>
+                <span class="pie-legend-value">${valueText}</span>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="pie-chart">
+            <svg class="pie-svg" viewBox="0 0 200 200" style="filter: drop-shadow(0 0 20px rgba(60, 235, 220, 0.4));">
+                <defs>
+                    ${gradients}
+                    ${filters}
+                </defs>
+                ${svgPaths}
+            </svg>
+            <div class="pie-legend">
+                ${legendItems}
+            </div>
+        </div>
+        ${enableHover ? `
+        <div id="${chartId}-tooltip" class="pie-tooltip" style="
+            position: absolute;
+            background: linear-gradient(135deg, rgba(10, 20, 35, 0.98) 0%, rgba(15, 30, 50, 0.98) 100%);
+            border: 2px solid rgba(60, 235, 220, 0.6);
+            border-radius: 10px;
+            padding: 12px 18px;
+            color: #fff;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            display: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 9999;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(60, 235, 220, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            min-width: 150px;
+            white-space: nowrap;
+            transform: scale(0.95);
+        "></div>
+        ` : ''}
+    `;
+
+    // 添加悬浮提示功能（优化版：智能定位，防止遮挡）
+    if (enableHover) {
+        const tooltip = container.querySelector(`#${chartId}-tooltip`);
+        const slices = container.querySelectorAll('.pie-slice');
+
+        slices.forEach(slice => {
+            slice.addEventListener('mousemove', (e) => {
+                const label = slice.getAttribute('data-label');
+                const value = slice.getAttribute('data-value');
+                const percentage = slice.getAttribute('data-percentage');
+
+                tooltip.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 8px; color: #3cebdc; font-size: 15px; text-shadow: 0 0 10px rgba(60, 235, 220, 0.5);">${label}</div>
+                    <div style="margin-bottom: 4px; color: #e0e0e0;">
+                        <span style="color: #999;">数值：</span>
+                        <span style="color: #ffd65c; font-weight: 600;">${value}</span>
+                    </div>
+                    <div style="color: #e0e0e0;">
+                        <span style="color: #999;">占比：</span>
+                        <span style="color: #4fa8ff; font-weight: 600;">${percentage}</span>
+                    </div>
+                `;
+
+                // 显示tooltip以获取其尺寸
+                tooltip.style.display = 'block';
+                tooltip.style.opacity = '0'; // 先设为0，计算完位置再显示
+
+                // 强制重排以获取准确尺寸
+                tooltip.offsetHeight;
+
+                // 获取容器和tooltip的尺寸
+                const containerRect = container.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+
+                // 计算鼠标相对于容器的位置
+                const mouseX = e.clientX - containerRect.left;
+                const mouseY = e.clientY - containerRect.top;
+
+                // 默认偏移量
+                const offsetX = 15;
+                const offsetY = 15;
+                const padding = 10; // 距离边缘的最小距离
+
+                // 初始位置：鼠标右下方
+                let left = mouseX + offsetX;
+                let top = mouseY + offsetY;
+                let position = 'bottom-right'; // 记录tooltip位置，用于调整三角形
+
+                // 智能调整：优先级顺序 右下 -> 右上 -> 左下 -> 左上
+
+                // 检查右侧是否溢出
+                if (left + tooltipRect.width + padding > containerRect.width) {
+                    // 尝试放在左侧
+                    left = mouseX - tooltipRect.width - offsetX;
+                    position = position.replace('right', 'left');
+
+                    // 如果左侧也溢出，则居中对齐
+                    if (left < padding) {
+                        left = Math.max(padding, Math.min(
+                            containerRect.width - tooltipRect.width - padding,
+                            mouseX - tooltipRect.width / 2
+                        ));
+                    }
+                }
+
+                // 检查底部是否溢出
+                if (top + tooltipRect.height + padding > containerRect.height) {
+                    // 尝试放在上方
+                    top = mouseY - tooltipRect.height - offsetY;
+                    position = position.replace('bottom', 'top');
+
+                    // 如果上方也溢出，则垂直居中
+                    if (top < padding) {
+                        top = Math.max(padding, Math.min(
+                            containerRect.height - tooltipRect.height - padding,
+                            mouseY - tooltipRect.height / 2
+                        ));
+                    }
+                }
+
+                // 确保不超出左边界
+                if (left < padding) {
+                    left = padding;
+                }
+
+                // 确保不超出上边界
+                if (top < padding) {
+                    top = padding;
+                }
+
+                // 应用位置（使用绝对定位，相对于容器）
+                tooltip.style.left = left + 'px';
+                tooltip.style.top = top + 'px';
+
+                // 根据位置调整三角形指示器（如果需要）
+                tooltip.setAttribute('data-position', position);
+
+                // 延迟显示，避免闪烁
+                requestAnimationFrame(() => {
+                    tooltip.style.opacity = '1';
+                    tooltip.style.transform = 'scale(1)';
+                });
+            });
+
+            slice.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = '0';
+                tooltip.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    tooltip.style.display = 'none';
+                }, 200);
+            });
+        });
+    }
+}
+
 // 详情页面配置
 const DETAIL_CONFIG = {
     alerts: {
@@ -42,6 +318,11 @@ const DETAIL_CONFIG = {
         title: "总体风险敞口详情",
         subtitle: "敞口明细与集中度分析",
         icon: "💰"
+    },
+    npl: {
+        title: "不良资产监控详情",
+        subtitle: "不良资产分类与趋势分析",
+        icon: "📊"
     }
 };
 
@@ -467,6 +748,9 @@ function renderDetailContent() {
         case "overall":
             content = renderOverallDetail();
             break;
+        case "npl":
+            content = renderNplDetail();
+            break;
         default:
             content = renderEmptyState("未知的详情类型");
     }
@@ -662,24 +946,18 @@ function renderUsageDistributionChart(distribution) {
         return;
     }
 
-    // 简单的柱状图渲染
-    const maxCount = Math.max(...distribution.map(d => d.count || 0));
-    const chartHTML = distribution.map(d => {
-        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
-        return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">${d.range}</span>
-                    <span style="color: #4fc3f7; font-weight: bold;">${d.count}家</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
+    // 使用饼图展示授信使用率分布
+    const pieData = distribution.map(d => ({
+        label: d.range,
+        value: d.count || 0
+    }));
 
-    chartContainer.innerHTML = chartHTML;
+    renderPieChart(chartContainer, pieData, {
+        labelKey: 'label',
+        valueKey: 'value',
+        colors: ['#66bb6a', '#4fc3f7', '#ffa726', '#ff5252'],
+        formatValue: (v) => `${v}家`
+    });
 }
 
 function renderConcentrationChart(concentration) {
@@ -696,24 +974,28 @@ function renderConcentrationChart(concentration) {
     const total = concentration.total_exposure || 0;
     const others = total - top10;
 
-    chartContainer.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <div style="margin-bottom: 20px;">
-                <div style="font-size: 48px; font-weight: bold; color: #4fc3f7;">${ratio.toFixed(2)}%</div>
-                <div style="color: #999; margin-top: 10px;">Top10客户集中度</div>
-            </div>
-            <div style="display: flex; justify-content: space-around; margin-top: 30px;">
-                <div>
-                    <div style="color: #4fc3f7; font-size: 24px; font-weight: bold;">${(top10 / 100000000).toFixed(2)}</div>
-                    <div style="color: #999; margin-top: 5px;">Top10敞口（亿元）</div>
-                </div>
-                <div>
-                    <div style="color: #7e57c2; font-size: 24px; font-weight: bold;">${(others / 100000000).toFixed(2)}</div>
-                    <div style="color: #999; margin-top: 5px;">其他敞口（亿元）</div>
-                </div>
-            </div>
-        </div>
+    // 使用饼图展示集中度
+    const pieData = [
+        { label: 'Top10客户', value: top10 },
+        { label: '其他客户', value: others }
+    ];
+
+    renderPieChart(chartContainer, pieData, {
+        labelKey: 'label',
+        valueKey: 'value',
+        colors: ['#4fc3f7', '#7e57c2'],
+        formatValue: (v) => `${(v / 100000000).toFixed(2)}亿`,
+        showPercentage: true
+    });
+
+    // 在饼图下方添加集中度指标
+    const statsDiv = document.createElement('div');
+    statsDiv.style.cssText = 'text-align: center; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;';
+    statsDiv.innerHTML = `
+        <div style="font-size: 32px; font-weight: bold; color: #4fc3f7;">${ratio.toFixed(2)}%</div>
+        <div style="color: #999; margin-top: 5px;">Top10客户集中度</div>
     `;
+    chartContainer.appendChild(statsDiv);
 }
 
 function renderCreditRankingTable(ranking, unit) {
@@ -826,23 +1108,19 @@ function renderAgeDistributionChart(distribution) {
         return;
     }
 
-    const maxCount = Math.max(...distribution.map(d => d.count || 0));
-    const chartHTML = distribution.map(d => {
-        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
-        return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">${d.range}</span>
-                    <span style="color: #4fc3f7; font-weight: bold;">${d.count}艘</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
+    // 使用炫彩饼图展示船龄分布
+    const pieData = distribution.map(d => ({
+        label: d.range,
+        value: d.count || 0
+    }));
 
-    chartContainer.innerHTML = chartHTML;
+    renderPieChart(chartContainer, pieData, {
+        labelKey: 'label',
+        valueKey: 'value',
+        colors: ['#4fc3f7', '#29b6f6', '#03a9f4', '#0288d1', '#0277bd', '#01579b'],
+        formatValue: (v) => `${v}艘`,
+        enableHover: true
+    });
 }
 
 function renderTypeDistributionChart(distribution) {
@@ -854,23 +1132,19 @@ function renderTypeDistributionChart(distribution) {
         return;
     }
 
-    const maxCount = Math.max(...distribution.map(d => d.count || 0));
-    const chartHTML = distribution.map(d => {
-        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
-        return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">${d.type || '未知'}</span>
-                    <span style="color: #7e57c2; font-weight: bold;">${d.count}艘</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, #7e57c2, #9575cd); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
+    // 使用炫彩饼图展示船型分布
+    const pieData = distribution.map(d => ({
+        label: d.type || '未知',
+        value: d.count || 0
+    }));
 
-    chartContainer.innerHTML = chartHTML;
+    renderPieChart(chartContainer, pieData, {
+        labelKey: 'label',
+        valueKey: 'value',
+        colors: ['#7e57c2', '#9575cd', '#b39ddb', '#d1c4e9', '#ff6f00', '#ff8f00', '#ffa000', '#ffb300'],
+        formatValue: (v) => `${v}艘`,
+        enableHover: true
+    });
 }
 
 function renderVesselRankingTable(ranking) {
@@ -937,27 +1211,19 @@ function renderNplClassificationChart(classification, unit) {
         return;
     }
 
-    const maxAmount = Math.max(...classification.map(c => c.total_amount || 0));
-    const chartHTML = classification.map(c => {
-        const percentage = maxAmount > 0 ? (c.total_amount / maxAmount) * 100 : 0;
-        const color = c.classification === '损失' ? '#ff5252' :
-                     c.classification === '可疑' ? '#ffa726' :
-                     c.classification === '次级' ? '#ffeb3b' : '#66bb6a';
+    // 使用饼图展示不良资产分类
+    const pieData = classification.map(c => ({
+        label: c.classification,
+        value: c.total_amount || 0,
+        count: c.count || 0
+    }));
 
-        return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">${c.classification}</span>
-                    <span style="color: ${color}; font-weight: bold;">${c.count}条 / ${formatAmount(c.total_amount, unit)}</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: ${color}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    chartContainer.innerHTML = chartHTML;
+    renderPieChart(chartContainer, pieData, {
+        labelKey: 'label',
+        valueKey: 'value',
+        colors: ['#66bb6a', '#ffeb3b', '#ffa726', '#ff5252'], // 关注、次级、可疑、损失
+        formatValue: (v) => formatAmount(v, unit)
+    });
 }
 
 function renderNplTrendChart(trend, unit) {
@@ -969,24 +1235,217 @@ function renderNplTrendChart(trend, unit) {
         return;
     }
 
-    const maxAmount = Math.max(...trend.map(t => t.npl_amount || 0));
-    const chartHTML = trend.map(t => {
-        const percentage = maxAmount > 0 ? (t.npl_amount / maxAmount) * 100 : 0;
+    // 计算不良率（占比）
+    const trendWithRate = trend.map(t => ({
+        ...t,
+        npl_rate: t.total_amount > 0 ? (t.npl_amount / t.total_amount * 100) : 0
+    }));
 
-        return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">${t.month}</span>
-                    <span style="color: #ff5252; font-weight: bold;">${t.npl_count}条 / ${formatAmount(t.npl_amount, unit)}</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, #ff5252, #ff7979); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
+    const maxRate = Math.max(...trendWithRate.map(t => t.npl_rate));
+    const minRate = Math.min(...trendWithRate.map(t => t.npl_rate));
+    const rateRange = maxRate - minRate || 1;
+
+    // 生成唯一ID
+    const chartId = 'npl-trend-' + Math.random().toString(36).substr(2, 9);
+
+    // SVG尺寸
+    const width = 1000;
+    const height = 300;
+    const padding = { top: 20, right: 50, bottom: 40, left: 60 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // 计算点的位置
+    const points = trendWithRate.map((t, i) => {
+        const x = padding.left + (i / (trendWithRate.length - 1)) * chartWidth;
+        const y = padding.top + chartHeight - ((t.npl_rate - minRate) / rateRange) * chartHeight;
+        return { x, y, data: t };
+    });
+
+    // 生成路径
+    const linePath = points.map((p, i) =>
+        `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+    ).join(' ');
+
+    // 生成渐变填充区域
+    const areaPath = `${linePath} L ${points[points.length - 1].x} ${height - padding.bottom} L ${padding.left} ${height - padding.bottom} Z`;
+
+    // Y轴刻度
+    const yTicks = 5;
+    const yTickValues = Array.from({ length: yTicks }, (_, i) =>
+        minRate + (rateRange / (yTicks - 1)) * i
+    );
+
+    const chartHTML = `
+        <div style="width: 100%; height: 100%; padding: 10px; position: relative;">
+            <svg viewBox="0 0 ${width} ${height}" style="width: 100%; height: 100%;" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <!-- 渐变填充 -->
+                    <linearGradient id="${chartId}-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff5252;stop-opacity:0.4" />
+                        <stop offset="100%" style="stop-color:#ff5252;stop-opacity:0.05" />
+                    </linearGradient>
+
+                    <!-- 发光滤镜 -->
+                    <filter id="${chartId}-glow">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+
+                <!-- 背景网格线 -->
+                ${yTickValues.map(val => {
+                    const y = padding.top + chartHeight - ((val - minRate) / rateRange) * chartHeight;
+                    return `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+                }).join('')}
+
+                <!-- Y轴 -->
+                <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+
+                <!-- Y轴刻度和标签 -->
+                ${yTickValues.map(val => {
+                    const y = padding.top + chartHeight - ((val - minRate) / rateRange) * chartHeight;
+                    return `
+                        <line x1="${padding.left - 5}" y1="${y}" x2="${padding.left}" y2="${y}" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+                        <text x="${padding.left - 10}" y="${y + 5}" text-anchor="end" fill="#fff" font-size="12">${val.toFixed(2)}%</text>
+                    `;
+                }).join('')}
+
+                <!-- X轴 -->
+                <line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+
+                <!-- X轴标签 -->
+                ${points.map((p, i) => {
+                    // 只显示部分标签，避免拥挤
+                    if (i % Math.ceil(points.length / 6) === 0 || i === points.length - 1) {
+                        return `<text x="${p.x}" y="${height - padding.bottom + 20}" text-anchor="middle" fill="#fff" font-size="12">${p.data.month}</text>`;
+                    }
+                    return '';
+                }).join('')}
+
+                <!-- 渐变填充区域 -->
+                <path d="${areaPath}" fill="url(#${chartId}-gradient)" />
+
+                <!-- 折线 -->
+                <path d="${linePath}" fill="none" stroke="#ff5252" stroke-width="3" filter="url(#${chartId}-glow)" />
+
+                <!-- 数据点 -->
+                ${points.map((p, i) => `
+                    <circle
+                        cx="${p.x}"
+                        cy="${p.y}"
+                        r="5"
+                        fill="#ff5252"
+                        stroke="#fff"
+                        stroke-width="2"
+                        class="npl-trend-point"
+                        data-month="${p.data.month}"
+                        data-npl-amount="${formatAmount(p.data.npl_amount, unit)}"
+                        data-total-amount="${formatAmount(p.data.total_amount, unit)}"
+                        data-npl-count="${p.data.npl_count}"
+                        data-rate="${p.data.npl_rate.toFixed(2)}"
+                        style="cursor: pointer; filter: url(#${chartId}-glow); transition: all 0.3s ease;"
+                        onmouseover="this.setAttribute('r', '8'); this.style.filter='drop-shadow(0 0 10px #ff5252)';"
+                        onmouseout="this.setAttribute('r', '5'); this.style.filter='url(#${chartId}-glow)';"
+                    />
+                `).join('')}
+
+                <!-- Y轴标题 -->
+                <text x="${padding.left - 45}" y="${padding.top + chartHeight / 2}" text-anchor="middle" fill="#fff" font-size="14" transform="rotate(-90 ${padding.left - 45} ${padding.top + chartHeight / 2})">不良率 (%)</text>
+            </svg>
+
+            <!-- 悬浮提示框 -->
+            <div id="${chartId}-tooltip" style="
+                position: absolute;
+                background: rgba(10, 20, 35, 0.95);
+                border: 1px solid rgba(255, 82, 82, 0.5);
+                border-radius: 8px;
+                padding: 12px 16px;
+                color: #fff;
+                font-size: 13px;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                z-index: 1000;
+                box-shadow: 0 0 20px rgba(255, 82, 82, 0.3);
+                min-width: 200px;
+            "></div>
+        </div>
+    `;
 
     chartContainer.innerHTML = chartHTML;
+
+    // 添加悬浮提示功能
+    const tooltip = chartContainer.querySelector(`#${chartId}-tooltip`);
+    const dataPoints = chartContainer.querySelectorAll('.npl-trend-point');
+
+    dataPoints.forEach((point, index) => {
+        // 使用 mouseenter 和 mousemove 确保第一个点也能触发
+        const showTooltip = (e) => {
+            const month = point.getAttribute('data-month');
+            const nplAmount = point.getAttribute('data-npl-amount');
+            const totalAmount = point.getAttribute('data-total-amount');
+            const nplCount = point.getAttribute('data-npl-count');
+            const rate = point.getAttribute('data-rate');
+
+            tooltip.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 8px; color: #ff5252; font-size: 14px;">${month}</div>
+                <div style="margin-bottom: 4px;">不良资产: ${nplAmount}</div>
+                <div style="margin-bottom: 4px;">总资产: ${totalAmount}</div>
+                <div style="margin-bottom: 4px;">不良笔数: ${nplCount}条</div>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+                    <span style="color: #ff5252; font-weight: bold; font-size: 16px;">${rate}%</span>
+                    <span style="color: #999; font-size: 12px; margin-left: 5px;">(${nplAmount} / ${totalAmount})</span>
+                </div>
+            `;
+            tooltip.style.opacity = '1';
+
+            // 获取容器和tooltip的尺寸
+            const containerRect = chartContainer.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const tooltipWidth = tooltipRect.width || 220;
+            const tooltipHeight = tooltipRect.height || 150;
+
+            // 计算鼠标相对于容器的位置
+            const mouseX = e.clientX - containerRect.left;
+            const mouseY = e.clientY - containerRect.top;
+
+            // 智能定位：判断是否靠近右边界或底部边界
+            let left, top;
+
+            // 水平方向：如果鼠标在容器右半部分，tooltip显示在左侧
+            if (mouseX > containerRect.width / 2) {
+                left = mouseX - tooltipWidth - 15;
+            } else {
+                left = mouseX + 15;
+            }
+
+            // 垂直方向：如果鼠标在容器下半部分，tooltip显示在上方
+            if (mouseY > containerRect.height / 2) {
+                top = mouseY - tooltipHeight - 10;
+            } else {
+                top = mouseY + 10;
+            }
+
+            // 确保不超出边界
+            left = Math.max(10, Math.min(left, containerRect.width - tooltipWidth - 10));
+            top = Math.max(10, Math.min(top, containerRect.height - tooltipHeight - 10));
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        };
+
+        // 同时监听 mouseenter 和 mousemove
+        point.addEventListener('mouseenter', showTooltip);
+        point.addEventListener('mousemove', showTooltip);
+
+        point.addEventListener('mouseleave', () => {
+            tooltip.style.opacity = '0';
+        });
+    });
 }
 
 function renderNplAssetsTable(assets, unit) {
@@ -1478,31 +1937,21 @@ function renderCompanyDistributionChart(distribution) {
         return;
     }
 
-    const maxCount = Math.max(...distribution.map(d => d.count || 0));
-    const levelColors = { 'high': '#ff5252', 'medium': '#ffa726', 'low': '#66bb6a' };
     const levelLabels = { 'high': '高风险', 'medium': '中风险', 'low': '低风险' };
-    const levelIcons = { 'high': '⚠️', 'medium': '⚡', 'low': '✓' };
 
-    const chartHTML = distribution.map(d => {
-        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
-        const color = levelColors[d.risk_level] || '#999';
-        const label = levelLabels[d.risk_level] || d.risk_level;
-        const icon = levelIcons[d.risk_level] || '•';
+    // 使用饼图展示企业风险等级分布
+    const pieData = distribution.map(d => ({
+        label: levelLabels[d.risk_level] || d.risk_level,
+        value: d.count || 0,
+        avg_score: d.avg_score || 0
+    }));
 
-        return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">${icon} ${label}</span>
-                    <span style="color: ${color}; font-weight: bold;">${d.count}家 (评分: ${(d.avg_score || 0).toFixed(1)})</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: ${color}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    chartContainer.innerHTML = chartHTML;
+    renderPieChart(chartContainer, pieData, {
+        labelKey: 'label',
+        valueKey: 'value',
+        colors: ['#66bb6a', '#ffa726', '#ff5252'], // 低、中、高
+        formatValue: (v) => `${v}家`
+    });
 }
 
 function renderVesselDistributionChart(distribution) {
@@ -1514,29 +1963,20 @@ function renderVesselDistributionChart(distribution) {
         return;
     }
 
-    const maxCount = Math.max(...distribution.map(d => d.count || 0));
-    const levelColors = { 'high': '#ff5252', 'medium': '#ffa726', 'low': '#66bb6a' };
     const levelLabels = { 'high': '高风险', 'medium': '中风险', 'low': '低风险' };
 
-    const chartHTML = distribution.map(d => {
-        const percentage = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
-        const color = levelColors[d.risk_level] || '#999';
-        const label = levelLabels[d.risk_level] || d.risk_level;
+    // 使用饼图展示船舶风险等级分布
+    const pieData = distribution.map(d => ({
+        label: levelLabels[d.risk_level] || d.risk_level,
+        value: d.count || 0
+    }));
 
-        return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">🚢 ${label}</span>
-                    <span style="color: ${color}; font-weight: bold;">${d.count}艘 (评分: ${(d.avg_score || 0).toFixed(1)})</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: ${color}; height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    chartContainer.innerHTML = chartHTML;
+    renderPieChart(chartContainer, pieData, {
+        labelKey: 'label',
+        valueKey: 'value',
+        colors: ['#66bb6a', '#ffa726', '#ff5252'], // 低、中、高
+        formatValue: (v) => `${v}艘`
+    });
 }
 
 function renderRiskMigrationChart(companyDist, vesselDist) {
@@ -1644,24 +2084,52 @@ function renderCurrencyExposureChart(exposure, unit) {
         return;
     }
 
+    // 竖向排列币种
     const maxAmount = Math.max(...exposure.map(e => e.total_amount || 0));
     const chartHTML = exposure.map(e => {
         const percentage = maxAmount > 0 ? (e.total_amount / maxAmount) * 100 : 0;
 
         return `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="color: #fff; font-size: 14px;">${e.currency}</span>
-                    <span style="color: #4fc3f7; font-weight: bold;">${e.count}条 / ${formatAmount(e.total_amount, unit)}</span>
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #fff; font-size: 16px; font-weight: 500;">${e.currency}</span>
+                    <span style="color: #4fc3f7; font-weight: bold; font-size: 14px;">${e.count}条 / ${formatAmount(e.total_amount, unit)}</span>
                 </div>
-                <div style="background: rgba(255,255,255,0.1); height: 20px; border-radius: 10px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, #4fc3f7, #29b6f6); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                <div style="background: rgba(255,255,255,0.1); height: 24px; border-radius: 12px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                    <div style="
+                        background: linear-gradient(90deg, #4fc3f7, #29b6f6);
+                        height: 100%;
+                        width: ${percentage}%;
+                        transition: width 0.5s ease;
+                        box-shadow: 0 0 15px rgba(79, 195, 247, 0.6);
+                        position: relative;
+                    ">
+                        <div style="
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                            animation: shimmer 2s infinite;
+                        "></div>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
 
-    chartContainer.innerHTML = chartHTML;
+    chartContainer.innerHTML = `
+        <div style="padding: 10px;">
+            ${chartHTML}
+        </div>
+        <style>
+            @keyframes shimmer {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(100%); }
+            }
+        </style>
+    `;
 }
 
 function renderExposureConcentrationChart(stats, unit) {
@@ -1895,7 +2363,7 @@ async function fetchDetailData(timeRange = '30d', customerId = null) {
     }
 
     // 对所有详情页类型实现真实API调用
-    const supportedTypes = ["credit", "alerts", "vessels", "trend", "factors", "distribution", "overall"];
+    const supportedTypes = ["credit", "alerts", "vessels", "trend", "factors", "distribution", "overall", "npl"];
     if (supportedTypes.includes(Detail.type)) {
         try {
             const apiEndpoint = `/api/detail/${Detail.type}`;
@@ -1935,7 +2403,8 @@ async function fetchDetailData(timeRange = '30d', customerId = null) {
                 "trend": (data) => renderTrendData(data, timeRange),
                 "factors": renderFactorsData,
                 "distribution": renderDistributionData,
-                "overall": renderOverallData
+                "overall": renderOverallData,
+                "npl": renderNplData
             };
 
             if (renderFunctions[Detail.type]) {

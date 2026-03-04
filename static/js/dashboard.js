@@ -313,10 +313,17 @@ function updateDashboard(data) {
     const overdue = alerts.overdue || {};
     const overdueAmount = Number(overdue.overdue_amount || 0);
     const overdueRate = totalAmount ? overdueAmount / totalAmount : 0;
-    document.getElementById("overdueRate").textContent = formatPercent(overdueRate);
-    document.getElementById("overdueAmount").textContent = `逾期金额 ${formatCurrency(overdueAmount)}`;
+    const overdueRateEl = document.getElementById("overdueRate");
+    const overdueAmountEl = document.getElementById("overdueAmount");
+    const overdueBarsEl = document.getElementById("overdueBars");
 
-    updateOverdueBars(document.getElementById("overdueBars"), npl.overdue_buckets || {});
+    if (overdueRateEl) overdueRateEl.textContent = formatPercent(overdueRate);
+    if (overdueAmountEl) overdueAmountEl.textContent = `逾期金额 ${formatCurrency(overdueAmount)}`;
+
+    // 逾期分桶功能已删除，如果元素存在则隐藏
+    if (overdueBarsEl) {
+        overdueBarsEl.style.display = 'none';
+    }
 
     const company = data.risk_levels?.company || [];
     const vessel = data.risk_levels?.vessel || [];
