@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银航宝 · 智能风险预测</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+    <link rel="stylesheet" href="/static/css/sci-fi-select.css">
+    <link rel="stylesheet" href="/static/css/ml-predict.css">
+    <link rel="stylesheet" href="/static/css/global-effects.css">
+    <script src="/static/js/sci-fi-select.js"></script>
+</head>
+<body class="dashboard-body ml-predict-page">
+    <div class="skyline" aria-hidden="true"></div>
+    <div class="grid-glow" aria-hidden="true"></div>
+    <div class="particles" id="particles"></div>
+    <div class="stream-lines" aria-hidden="true"></div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <button class="back-btn" id="backBtn" data-tip="返回总览大屏">返回大屏</button>
+            <div class="date-display">
+                <span class="date-label">模型版本：</span>
+                <span class="date-value" id="modelVersion">Random Forest v1.0</span>
+            </div>
+        </div>
+        <div class="top-center">
+            <h1>🤖 智能风险预测</h1>
+            <p id="mlTitle">基于机器学习的船舶风险评估</p>
+        </div>
+        <div class="top-right">
+            <div class="clock" id="cnClock">--</div>
+            <div class="meta">
+                <span class="tag">AI驱动</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="ml-content">
+        <!-- 模型性能指标 -->
+        <section class="ml-stats">
+            <div class="stat-card glow-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-info">
+                    <div class="stat-label">模型准确率</div>
+                    <div class="stat-value" id="modelAccuracy">--</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <div class="stat-label">训练样本数</div>
+                    <div class="stat-value" id="trainSamples">--</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">🔍</div>
+                <div class="stat-info">
+                    <div class="stat-label">特征数量</div>
+                    <div class="stat-value" id="featureCount">--</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-info">
+                    <div class="stat-label">预测速度</div>
+                    <div class="stat-value" id="predictSpeed">&lt;1ms</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 单船预测 -->
+        <section class="card ml-card glow-border">
+            <h3>🚢 单船风险预测</h3>
+            <div class="ml-predict-form">
+                <div class="form-group">
+                    <label>选择船舶：</label>
+                    <select id="vesselSelect" class="glow-input sci-fi-select">
+                        <option value="">加载中...</option>
+                    </select>
+                </div>
+                <button class="predict-btn glow-btn" id="predictBtn">🚀 开始预测</button>
+            </div>
+
+            <!-- 预测结果 -->
+            <div class="predict-result" id="predictResult" style="display: none;">
+                <div class="result-header">
+                    <h4>预测结果</h4>
+                    <span class="result-vessel" id="resultVessel">--</span>
+                </div>
+
+                <div class="result-main">
+                    <div class="risk-badge" id="riskBadge">
+                        <div class="risk-level" id="riskLevel">--</div>
+                        <div class="risk-confidence">置信度: <span id="confidence">--</span></div>
+                    </div>
+
+                    <div class="risk-probabilities">
+                        <div class="prob-item">
+                            <span class="prob-label">低风险</span>
+                            <div class="prob-bar">
+                                <div class="prob-fill low" id="probLow" style="width: 0%"></div>
+                            </div>
+                            <span class="prob-value" id="probLowValue">0%</span>
+                        </div>
+                        <div class="prob-item">
+                            <span class="prob-label">中风险</span>
+                            <div class="prob-bar">
+                                <div class="prob-fill medium" id="probMedium" style="width: 0%"></div>
+                            </div>
+                            <span class="prob-value" id="probMediumValue">0%</span>
+                        </div>
+                        <div class="prob-item">
+                            <span class="prob-label">高风险</span>
+                            <div class="prob-bar">
+                                <div class="prob-fill high" id="probHigh" style="width: 0%"></div>
+                            </div>
+                            <span class="prob-value" id="probHighValue">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="risk-factors">
+                    <h5>🔍 关键风险因子</h5>
+                    <div class="factors-list" id="factorsList">
+                        <!-- 动态加载 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 批量预测结果 -->
+        <section class="card ml-card glow-border">
+            <h3>📊 批量预测分析</h3>
+            <div class="batch-controls">
+                <button class="batch-btn glow-btn" id="batchPredictBtn">⚡ 批量预测（Top 100）</button>
+                <button class="batch-btn glow-btn secondary" id="refreshBtn">🔄 刷新数据</button>
+            </div>
+
+            <div class="batch-result" id="batchResult">
+                <div class="batch-stats">
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-label">总预测数：</span>
+                        <span class="batch-stat-value" id="batchTotal">0</span>
+                    </div>
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-label">高风险：</span>
+                        <span class="batch-stat-value high" id="batchHigh">0</span>
+                    </div>
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-label">中风险：</span>
+                        <span class="batch-stat-value medium" id="batchMedium">0</span>
+                    </div>
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-label">低风险：</span>
+                        <span class="batch-stat-value low" id="batchLow">0</span>
+                    </div>
+                </div>
+
+                <div class="batch-table-wrapper">
+                    <table class="batch-table">
+                        <thead>
+                            <tr>
+                                <th>船舶IMO</th>
+                                <th>船舶名称</th>
+                                <th>预测风险等级</th>
+                                <th>置信度</th>
+                                <th>低风险概率</th>
+                                <th>中风险概率</th>
+                                <th>高风险概率</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batchTableBody">
+                            <tr>
+                                <td colspan="7" class="no-data">暂无数据，点击"批量预测"开始</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 特征重要性 -->
+        <section class="card ml-card glow-border">
+            <h3>📈 特征重要性分析</h3>
+            <div class="feature-importance" id="featureImportance">
+                <div class="loading-text">加载中...</div>
+            </div>
+        </section>
+
+        <!-- 模型信息 -->
+        <section class="card ml-card glow-border">
+            <h3>ℹ️ 模型信息</h3>
+            <div class="model-info">
+                <div class="info-row">
+                    <span class="info-label">模型类型：</span>
+                    <span class="info-value" id="modelType">Random Forest</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">训练时间：</span>
+                    <span class="info-value" id="trainTime">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">准确率：</span>
+                    <span class="info-value" id="infoAccuracy">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">精确率：</span>
+                    <span class="info-value" id="infoPrecision">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">召回率：</span>
+                    <span class="info-value" id="infoRecall">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">F1分数：</span>
+                    <span class="info-value" id="infoF1">--</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部版权 -->
+    <footer class="footer-section">
+        <p>&copy; 2026 银航宝·深蓝启航 | Fan版权所有 | ML Risk Prediction</p>
+    </footer>
+
+    <div class="toast" id="mlToast" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/ml-predict.js"></script>
+</body>
+</html>

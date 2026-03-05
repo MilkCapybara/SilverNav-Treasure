@@ -1,0 +1,80 @@
+{
+  "model_type": "random_forest",
+  "feature_names": [
+    "built_year",
+    "asset_risk_score",
+    "vessel_age",
+    "total_assets",
+    "total_principal",
+    "total_outstanding",
+    "npl_count",
+    "avg_asset_risk_score",
+    "risk_assessment_count",
+    "avg_historical_risk_score",
+    "max_historical_risk_score",
+    "min_historical_risk_score",
+    "std_historical_risk_score",
+    "company_credit_score",
+    "vessel_type_encoded",
+    "flag_country_encoded",
+    "company_risk_level_encoded"
+  ],
+  "metrics": {
+    "accuracy": 1.0,
+    "precision_macro": 1.0,
+    "recall_macro": 1.0,
+    "f1_macro": 1.0,
+    "confusion_matrix": [
+      [
+        13313,
+        0,
+        0
+      ],
+      [
+        0,
+        5364,
+        0
+      ],
+      [
+        0,
+        0,
+        7935
+      ]
+    ],
+    "classification_report": {
+      "0": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 13313.0
+      },
+      "1": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 5364.0
+      },
+      "2": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 7935.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 26612.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 26612.0
+      }
+    },
+    "auc_ovr": 1.0
+  },
+  "created_at": "2026-03-05T00:31:18.733619"
+}

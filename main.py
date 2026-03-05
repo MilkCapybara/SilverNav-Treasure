@@ -40,6 +40,15 @@ from app.database import db_conn, init_pools, close_pools, query_one, query_all
 from app.utils import _serialize_row, _serialize_rows
 from app.cache import cache
 
+# 导入机器学习API
+try:
+    from ml_models.predict_api import router as ml_router
+    HAS_ML = True
+except ImportError:
+    HAS_ML = False
+    ml_router = None
+    print("⚠️ 机器学习模块未安装，ML功能将不可用")
+
 # 导入 ClickHouse 客户端
 try:
     from app.clickhouse_client import (
@@ -95,6 +104,11 @@ if profile_router is not None:
 if quality_router is not None:
     app.include_router(quality_router)
 
+# 注册机器学习API路由
+if HAS_ML and ml_router is not None:
+    app.include_router(ml_router)
+    print("✅ 机器学习API已加载")
+
 # 静态文件与模板
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -147,6 +161,16 @@ def on_startup() -> None:
             print("✅ ClickHouse 已启用")
         except Exception as e:
             print(f"⚠️ ClickHouse 初始化失败，将使用 PostgreSQL: {e}")
+
+    # 初始化机器学习模块
+    if HAS_ML:
+        try:
+            from ml_models.predict_api import get_predictor
+            predictor = get_predictor()
+            print(f"✅ 机器学习模型已加载: {predictor.model_type}")
+        except Exception as e:
+            print(f"⚠️ 机器学习模型加载失败: {e}")
+            print("   提示: 运行 'python train_ml_models.py' 训练模型")
 
 
 @app.on_event("shutdown")
@@ -480,6 +504,12 @@ async def lineage(request: Request):
 async def quality(request: Request):
     """数据质量监控页面 - 不需要登录验证"""
     return templates.TemplateResponse("quality.html", {"request": request})
+
+
+@app.get("/ml-predict", response_class=HTMLResponse)
+async def ml_predict(request: Request):
+    """机器学习风险预测页面"""
+    return templates.TemplateResponse("ml_predict.html", {"request": request})
 
 
 @app.post("/api/login")
@@ -850,6 +880,35 @@ async def dashboard_trend(request: Request, payload: DashboardQuery):
     try:
         with db_conn(role) as conn:
             fx_rate = get_fx_rate(conn, currency, end_date)
+
+            # 先检查日期范围内是否有数据
+            data_check = query_one(
+                conn,
+                """
+                SELECT COUNT(*) as cnt
+                FROM financial_assets a
+                WHERE a.start_date BETWEEN %s AND %s
+                """,
+                (start_date, end_date),
+            )
+
+            # 如果没有数据，使用最近30天的实际数据
+            if data_check and data_check.get("cnt", 0) == 0:
+                # 获取数据库中最新的日期
+                max_date_result = query_one(
+                    conn,
+                    "SELECT MAX(start_date) as max_date FROM financial_assets"
+                )
+                if max_date_result and max_date_result.get("max_date"):
+                    actual_end_date = max_date_result["max_date"]
+                    actual_start_date = actual_end_date - timedelta(days=30)
+                else:
+                    actual_start_date = start_date
+                    actual_end_date = end_date
+            else:
+                actual_start_date = start_date
+                actual_end_date = end_date
+
             trend_risk = query_all(
                 conn,
                 """
@@ -859,7 +918,7 @@ async def dashboard_trend(request: Request, payload: DashboardQuery):
                 GROUP BY assessment_date
                 ORDER BY assessment_date
                 """,
-                (start_date, end_date),
+                (actual_start_date, actual_end_date),
             )
 
             trend_exposure = query_all(
@@ -874,7 +933,7 @@ async def dashboard_trend(request: Request, payload: DashboardQuery):
                 GROUP BY a.start_date
                 ORDER BY a.start_date
                 """,
-                (fx_rate, start_date, end_date),
+                (fx_rate, actual_start_date, actual_end_date),
             )
     except Exception as exc:
         return JSONResponse({"success": False, "msg": f"数据获取失败: {exc}"})

@@ -1,0 +1,486 @@
+/* 全局特效增强 - 航运金融科技风 */
+
+/* 修复鼠标指针问题 */
+button,
+.btn,
+.back-btn,
+.range-btn,
+.control-btn,
+.predict-btn,
+.batch-btn,
+.nav-btn,
+.logout-btn,
+.currency-btn,
+.unit-btn,
+.page-nav-btn,
+[data-tip],
+[role="button"],
+.clickable {
+    cursor: pointer !important;
+}
+
+a,
+a:hover {
+    cursor: pointer !important;
+}
+
+/* 流光粒子动画 */
+@keyframes float-particle {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0;
+    }
+    5% {
+        opacity: 1;
+    }
+    25% {
+        transform: translate(150px, -80px) scale(1.5);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translate(80px, -150px) scale(1);
+        opacity: 1;
+    }
+    75% {
+        transform: translate(-50px, -100px) scale(1.2);
+        opacity: 0.6;
+    }
+    95% {
+        opacity: 0.3;
+    }
+    100% {
+        transform: translate(200px, -200px) scale(0.8);
+        opacity: 0;
+    }
+}
+
+/* 卡片悬停发光效果 */
+.card:hover,
+.stat-card:hover,
+.glow-card:hover {
+    box-shadow:
+        0 0 30px rgba(60, 235, 220, 0.4),
+        0 0 60px rgba(60, 235, 220, 0.2),
+        inset 0 0 20px rgba(60, 235, 220, 0.1) !important;
+    border-color: rgba(60, 235, 220, 0.6) !important;
+    transform: translateY(-3px) !important;
+}
+
+/* 数值发光动画 */
+@keyframes value-glow {
+    0%, 100% {
+        text-shadow: 0 0 15px rgba(60, 235, 220, 0.5);
+    }
+    50% {
+        text-shadow: 0 0 25px rgba(60, 235, 220, 0.8),
+                     0 0 40px rgba(60, 235, 220, 0.4);
+    }
+}
+
+.value,
+.stat-value,
+.big-number .value {
+    animation: value-glow 2s ease-in-out infinite !important;
+}
+
+/* 按钮涟漪效果 */
+.range-btn,
+.control-btn,
+.predict-btn,
+.batch-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.range-btn::before,
+.control-btn::before,
+.predict-btn::before,
+.batch-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(60, 235, 220, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.range-btn:hover::before,
+.control-btn:hover::before,
+.predict-btn:hover::before,
+.batch-btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* 图标脉冲动画 */
+@keyframes icon-pulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(60, 235, 220, 0.6));
+    }
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 20px rgba(60, 235, 220, 0.9));
+    }
+}
+
+.stat-icon,
+.table-icon {
+    animation: icon-pulse 3s ease-in-out infinite !important;
+}
+
+/* 进度条闪光效果 */
+@keyframes bar-shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.progress-bar::before,
+.quality-fill::before,
+.feature-fill::before,
+.prob-fill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 100%);
+    animation: bar-shimmer 2s linear infinite;
+}
+
+/* 卡片流光扫过效果 */
+@keyframes card-shine {
+    0% {
+        transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    }
+    100% {
+        transform: translateX(100%) translateY(100%) rotate(45deg);
+    }
+}
+
+.card::before,
+.stat-card::before,
+.lineage-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(60, 235, 220, 0.15), transparent);
+    animation: card-shine 6s infinite;
+    pointer-events: none;
+}
+
+/* 数据更新闪烁 */
+@keyframes data-flash {
+    0%, 100% {
+        background: rgba(60, 235, 220, 0.1);
+    }
+    50% {
+        background: rgba(60, 235, 220, 0.3);
+    }
+}
+
+.data-updated {
+    animation: data-flash 0.6s ease-in-out;
+}
+
+/* 加载骨架屏 */
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(90deg,
+        rgba(60, 235, 220, 0.05) 0%,
+        rgba(60, 235, 220, 0.15) 50%,
+        rgba(60, 235, 220, 0.05) 100%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+/* 标题发光效果 */
+.card h2,
+.card h3,
+.lineage-card h3,
+.ml-card h3 {
+    text-shadow: 0 0 10px rgba(60, 235, 220, 0.3) !important;
+    position: relative;
+}
+
+.card h2::after,
+.card h3::after,
+.lineage-card h3::after,
+.ml-card h3::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan-400, #3cebdc), transparent);
+    box-shadow: 0 0 10px var(--cyan-400, #3cebdc);
+}
+
+/* 时钟发光 */
+.clock {
+    animation: value-glow 2s ease-in-out infinite !important;
+}
+
+/* 标签发光 */
+.tag {
+    transition: all 0.3s ease;
+}
+
+.tag:hover {
+    box-shadow: 0 0 15px rgba(255, 214, 92, 0.5);
+    transform: scale(1.05);
+}
+
+/* 列表项悬停效果 */
+.list-item:hover,
+.alert-item:hover,
+.factor-item:hover {
+    background: rgba(60, 235, 220, 0.1) !important;
+    border-color: rgba(60, 235, 220, 0.5) !important;
+    box-shadow: 0 0 20px rgba(60, 235, 220, 0.2) !important;
+    transform: translateX(5px) !important;
+}
+
+/* 圆环图发光 */
+.donut {
+    box-shadow: 0 0 25px rgba(60, 235, 220, 0.5) !important;
+    animation: donut-pulse 3s ease-in-out infinite;
+}
+
+@keyframes donut-pulse {
+    0%, 100% {
+        box-shadow: 0 0 25px rgba(60, 235, 220, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 35px rgba(60, 235, 220, 0.7), 0 0 50px rgba(60, 235, 220, 0.3);
+    }
+}
+
+/* 图表线条发光 */
+.chart .line {
+    filter: drop-shadow(0 0 5px currentColor);
+}
+
+/* 输入框聚焦效果 */
+input:focus,
+select:focus,
+textarea:focus {
+    box-shadow:
+        inset 0 0 20px rgba(60, 235, 220, 0.2),
+        0 0 20px rgba(60, 235, 220, 0.3) !important;
+    border-color: rgba(60, 235, 220, 0.7) !important;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(10, 22, 40, 0.5);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgba(60, 235, 220, 0.6), rgba(79, 168, 255, 0.6));
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(60, 235, 220, 0.4);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, rgba(60, 235, 220, 0.8), rgba(79, 168, 255, 0.8));
+}
+
+/* 表格行悬停 */
+table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(60, 235, 220, 0.15), rgba(79, 168, 255, 0.15)) !important;
+    box-shadow: 0 0 20px rgba(60, 235, 220, 0.2);
+}
+
+/* 徽章发光 */
+.badge,
+.risk-badge-small,
+.stat-badge {
+    transition: all 0.3s ease;
+}
+
+.badge:hover,
+.risk-badge-small:hover,
+.stat-badge:hover {
+    box-shadow: 0 0 15px currentColor;
+    transform: scale(1.05);
+}
+
+/* 成功动画 */
+@keyframes success-bounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.success-animation {
+    animation: success-bounce 0.6s ease-in-out;
+}
+
+/* 错误动画 */
+@keyframes error-shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-10px);
+    }
+    75% {
+        transform: translateX(10px);
+    }
+}
+
+.error-animation {
+    animation: error-shake 0.5s ease-in-out;
+}
+
+/* 网格脉冲 */
+@keyframes grid-pulse {
+    0%, 100% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.skyline,
+.grid-glow {
+    animation: grid-pulse 4s ease-in-out infinite;
+}
+
+/* 悬浮提示 */
+[data-tip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    background: rgba(10, 22, 40, 0.95);
+    border: 1px solid rgba(60, 235, 220, 0.5);
+    border-radius: 8px;
+    color: var(--text-main, #e9f6ff);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 0 20px rgba(60, 235, 220, 0.3);
+}
+
+[data-tip]:hover::after {
+    opacity: 1;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .card:hover,
+    .stat-card:hover {
+        transform: translateY(-2px) !important;
+    }
+
+    [data-tip]::after {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+
+    .footer-section {
+        font-size: 0.75rem;
+        padding: 12px 15px;
+    }
+}
+
+/* 页脚版权样式 */
+.footer-section {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 15px;
+    text-align: center;
+    background: linear-gradient(90deg, rgba(6, 22, 39, 0.95), rgba(11, 31, 54, 0.95));
+    border-top: 1px solid rgba(77, 186, 255, 0.28);
+    color: rgba(233, 246, 255, 0.68);
+    font-size: 0.85rem;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.footer-section p {
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+/* 页面底部留白 */
+body.dashboard-body {
+    padding-bottom: 60px;
+}
+
+.lineage-content,
+.ml-content,
+.behavior-content,
+.profile-content,
+.quality-content,
+.detail-content {
+    padding-bottom: 80px !important;
+}
+
+/* 打印样式 */
+@media print {
+    .particles,
+    .stream-lines,
+    .skyline,
+    .grid-glow,
+    .data-flow-bg,
+    .footer-section {
+        display: none !important;
+    }
+
+    .card,
+    .stat-card {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+    }
+}

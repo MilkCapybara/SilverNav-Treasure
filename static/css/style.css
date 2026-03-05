@@ -422,7 +422,7 @@ body.scene-collapsing .brand-title {
         linear-gradient(160deg, rgba(8, 31, 60, 0.9) 0%, rgba(7, 21, 43, 0.8) 100%);
     box-shadow: inset 0 0 45px rgba(19, 116, 183, 0.28), 0 20px 40px rgba(0, 0, 0, 0.28);
     transform-style: preserve-3d;
-    transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.6s ease;
 }
 
 .tidal-cabin::after {
@@ -431,6 +431,51 @@ body.scene-collapsing .brand-title {
     inset: 0;
     background: linear-gradient(118deg, rgba(120, 255, 239, 0.08) 0%, rgba(0, 0, 0, 0) 42%, rgba(146, 197, 255, 0.08) 100%);
     pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+
+.tidal-cabin::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 20px;
+    background: linear-gradient(45deg,
+        rgba(0, 255, 198, 0.4),
+        rgba(0, 125, 255, 0.4),
+        rgba(255, 193, 7, 0.4),
+        rgba(0, 255, 198, 0.4));
+    background-size: 300% 300%;
+    opacity: 0;
+    filter: blur(10px);
+    animation: borderFlow 4s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+    transition: opacity 0.6s ease;
+}
+
+@keyframes borderFlow {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.auth-container.register-mode .cabin-left::before,
+.auth-container.register-mode .cabin-right::before {
+    opacity: 1;
+}
+
+.auth-container.register-mode .cabin-left::after {
+    background: linear-gradient(118deg, rgba(0, 255, 198, 0.18) 0%, rgba(0, 255, 198, 0.05) 42%, rgba(0, 255, 198, 0) 100%);
+}
+
+.auth-container.register-mode .cabin-right::after {
+    background: linear-gradient(118deg, rgba(0, 125, 255, 0) 0%, rgba(0, 125, 255, 0.05) 58%, rgba(0, 125, 255, 0.18) 100%);
 }
 
 .tidal-panel {
@@ -440,7 +485,9 @@ body.scene-collapsing .brand-title {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    transition: opacity 0.4s ease, transform 0.4s ease;
+    transition: opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+                transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+    will-change: transform, opacity;
 }
 
 .panel-prompt {
@@ -455,6 +502,17 @@ body.scene-collapsing .brand-title {
     color: #eaf7ff;
     text-shadow: 0 0 26px rgba(100, 220, 255, 0.38);
     margin-bottom: 14px;
+    animation: titleShimmer 4s ease-in-out infinite;
+}
+
+@keyframes titleShimmer {
+    0%, 100% {
+        text-shadow: 0 0 26px rgba(100, 220, 255, 0.38);
+    }
+    50% {
+        text-shadow: 0 0 40px rgba(100, 220, 255, 0.6),
+                     0 0 60px rgba(0, 255, 198, 0.3);
+    }
 }
 
 .panel-prompt p {
@@ -478,13 +536,43 @@ body.scene-collapsing .brand-title {
     letter-spacing: 0.05em;
     padding: 11px 20px;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+                box-shadow 0.3s ease,
+                color 0.3s ease,
+                border-color 0.3s ease;
+}
+
+.switch-btn::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 255, 198, 0.4), transparent 70%);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+}
+
+.switch-btn:hover::before {
+    width: 300px;
+    height: 300px;
 }
 
 .switch-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 0 20px rgba(0, 255, 198, 0.25);
-    color: #fff3ca;
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 0 30px rgba(0, 255, 198, 0.4),
+                0 0 60px rgba(0, 255, 198, 0.2),
+                inset 0 0 20px rgba(0, 255, 198, 0.1);
+    color: #fff;
+    border-color: rgba(0, 255, 198, 0.8);
+}
+
+.switch-btn:active {
+    transform: translateY(0) scale(1);
 }
 
 .panel-form {
@@ -502,6 +590,22 @@ body.scene-collapsing .brand-title {
         0 0 10px rgba(0, 255, 198, 0.85),
         0 0 22px rgba(0, 170, 255, 0.65),
         0 0 42px rgba(255, 92, 206, 0.35);
+    animation: bannerPulse 3s ease-in-out infinite;
+}
+
+@keyframes bannerPulse {
+    0%, 100% {
+        text-shadow:
+            0 0 10px rgba(0, 255, 198, 0.85),
+            0 0 22px rgba(0, 170, 255, 0.65),
+            0 0 42px rgba(255, 92, 206, 0.35);
+    }
+    50% {
+        text-shadow:
+            0 0 20px rgba(0, 255, 198, 1),
+            0 0 35px rgba(0, 170, 255, 0.85),
+            0 0 60px rgba(255, 92, 206, 0.5);
+    }
 }
 
 .tidal-form {
@@ -520,11 +624,25 @@ body.scene-collapsing .brand-title {
     font-size: 17px;
     letter-spacing: 0.04em;
     padding: 13px 19px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    position: relative;
+    transition: border-color 0.3s ease,
+                box-shadow 0.3s ease,
+                background 0.3s ease,
+                transform 0.3s ease;
 }
 
 .tidal-form input::placeholder {
     color: rgba(200, 224, 255, 0.54);
+    transition: color 0.3s ease;
+}
+
+.tidal-form input:hover {
+    border-color: rgba(0, 255, 198, 0.4);
+    background: rgba(17, 41, 73, 0.7);
+}
+
+.tidal-form input:hover::placeholder {
+    color: rgba(200, 224, 255, 0.7);
 }
 
 .tidal-form input:focus {
@@ -532,7 +650,10 @@ body.scene-collapsing .brand-title {
     background:
         linear-gradient(rgba(16, 42, 73, 0.85), rgba(16, 42, 73, 0.85)) padding-box,
         linear-gradient(90deg, rgba(0, 255, 198, 0.8), rgba(0, 125, 255, 0.9)) border-box;
-    box-shadow: 0 0 14px rgba(0, 255, 198, 0.3);
+    box-shadow: 0 0 20px rgba(0, 255, 198, 0.4),
+                0 0 40px rgba(0, 255, 198, 0.2),
+                inset 0 0 15px rgba(0, 255, 198, 0.1);
+    transform: translateY(-2px);
 }
 
 .tidal-form button {
@@ -547,48 +668,87 @@ body.scene-collapsing .brand-title {
     cursor: pointer;
     background: linear-gradient(90deg, #00A6FF 0%, #00FFC6 100%);
     box-shadow: inset 0 -7px 18px rgba(0, 83, 109, 0.28), 0 8px 18px rgba(0, 255, 198, 0.2);
-    transition: transform 0.18s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+                box-shadow 0.3s ease;
+}
+
+.tidal-form button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent);
+    transition: left 0.5s ease;
+}
+
+.tidal-form button:hover::before {
+    left: 100%;
 }
 
 .tidal-form button:hover {
-    transform: scale(1.02);
-    box-shadow: inset 0 -10px 26px rgba(0, 56, 95, 0.35), 0 12px 28px rgba(0, 255, 198, 0.3);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: inset 0 -10px 26px rgba(0, 56, 95, 0.35),
+                0 12px 28px rgba(0, 255, 198, 0.4),
+                0 0 40px rgba(0, 255, 198, 0.3);
+}
+
+.tidal-form button:active {
+    transform: scale(1.02) translateY(0);
 }
 
 .left-register-wrap,
 .right-prompt {
     opacity: 0;
-    transform: translateX(28px) rotateY(-12deg);
+    transform: translateX(40px) rotateY(-15deg) scale(0.95);
     pointer-events: none;
+    filter: blur(5px);
 }
 
 .left-prompt,
 .right-login-wrap {
     opacity: 1;
-    transform: translateX(0) rotateY(0deg);
+    transform: translateX(0) rotateY(0deg) scale(1);
     pointer-events: auto;
+    filter: blur(0);
 }
 
 .auth-container.register-mode .cabin-left {
-    transform: rotateY(6deg);
+    transform: rotateY(8deg) translateZ(20px);
+    box-shadow:
+        inset 0 0 60px rgba(0, 255, 198, 0.35),
+        0 30px 60px rgba(0, 255, 198, 0.25),
+        0 0 80px rgba(0, 255, 198, 0.15);
 }
 
 .auth-container.register-mode .cabin-right {
-    transform: rotateY(-6deg);
+    transform: rotateY(-8deg) translateZ(20px);
+    box-shadow:
+        inset 0 0 60px rgba(0, 125, 255, 0.35),
+        0 30px 60px rgba(0, 125, 255, 0.25),
+        0 0 80px rgba(0, 125, 255, 0.15);
 }
 
 .auth-container.register-mode .left-prompt,
 .auth-container.register-mode .right-login-wrap {
     opacity: 0;
-    transform: translateX(-28px) rotateY(10deg);
+    transform: translateX(-40px) rotateY(15deg) scale(0.95);
     pointer-events: none;
+    filter: blur(5px);
 }
 
 .auth-container.register-mode .left-register-wrap,
 .auth-container.register-mode .right-prompt {
     opacity: 1;
-    transform: translateX(0) rotateY(0deg);
+    transform: translateX(0) rotateY(0deg) scale(1);
     pointer-events: auto;
+    filter: blur(0);
 }
 
 @keyframes borderScan {

@@ -6,12 +6,17 @@
     <title>银航宝 · 数据血缘</title>
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+    <link rel="stylesheet" href="/static/css/sci-fi-select.css">
     <link rel="stylesheet" href="/static/css/lineage.css">
+    <link rel="stylesheet" href="/static/css/global-effects.css">
+    <script src="/static/js/sci-fi-select.js"></script>
 </head>
 <body class="dashboard-body lineage-page">
     <div class="skyline" aria-hidden="true"></div>
     <div class="grid-glow" aria-hidden="true"></div>
+    <div class="particles" id="particles"></div>
     <div class="data-flow-bg" id="dataFlowBg"></div>
+    <div class="stream-lines" aria-hidden="true"></div>
 
     <header class="top-bar">
         <div class="top-left">
@@ -40,8 +45,8 @@
                 <div class="stat-icon">🗄️</div>
                 <div class="stat-info">
                     <div class="stat-label">数据源</div>
-                    <div class="stat-value" id="dataSourceCount">2</div>
-                    <div class="stat-desc">MongoDB + PostgreSQL</div>
+                    <div class="stat-value" id="dataSourceCount">4</div>
+                    <div class="stat-desc">MongoDB + PostgreSQL + Redis + ClickHouse</div>
                 </div>
             </div>
             <div class="stat-card glow-card">
@@ -205,6 +210,93 @@
             </section>
         </div>
 
+        <!-- Redis 和 ClickHouse -->
+        <div class="lineage-row">
+            <section class="card lineage-card glow-border">
+                <h3>⚡ Redis 缓存</h3>
+                <div class="table-list" id="redisTableList">
+                    <div class="table-item" data-table="session_cache">
+                        <div class="table-icon">🔐</div>
+                        <div class="table-info">
+                            <div class="table-name">session:*</div>
+                            <div class="table-desc">用户会话缓存</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">键数: <span id="sessionKeysCount">--</span></span>
+                                <span class="stat-badge">TTL: 24h</span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="dashboard_cache">
+                        <div class="table-icon">📊</div>
+                        <div class="table-info">
+                            <div class="table-name">dashboard:*</div>
+                            <div class="table-desc">仪表盘数据缓存</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">键数: <span id="dashboardKeysCount">--</span></span>
+                                <span class="stat-badge">TTL: 5m</span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="ml_cache">
+                        <div class="table-icon">🤖</div>
+                        <div class="table-info">
+                            <div class="table-name">ml:predictions:*</div>
+                            <div class="table-desc">ML预测结果缓存</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">键数: <span id="mlKeysCount">--</span></span>
+                                <span class="stat-badge">TTL: 1h</span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card lineage-card glow-border">
+                <h3>🚀 ClickHouse 分析</h3>
+                <div class="table-list" id="clickhouseTableList">
+                    <div class="table-item" data-table="risk_events">
+                        <div class="table-icon">⚠️</div>
+                        <div class="table-info">
+                            <div class="table-name">risk_events</div>
+                            <div class="table-desc">风险事件日志</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="riskEventsCount">--</span></span>
+                                <span class="stat-badge">压缩率: 10x</span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="vessel_metrics">
+                        <div class="table-icon">📈</div>
+                        <div class="table-info">
+                            <div class="table-name">vessel_metrics</div>
+                            <div class="table-desc">船舶指标时序数据</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="vesselMetricsCount">--</span></span>
+                                <span class="stat-badge">分区: 按月</span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                    <div class="table-item" data-table="analytics_summary">
+                        <div class="table-icon">📊</div>
+                        <div class="table-info">
+                            <div class="table-name">analytics_summary</div>
+                            <div class="table-desc">分析汇总表</div>
+                            <div class="table-stats">
+                                <span class="stat-badge">记录数: <span id="analyticsSummaryCount">--</span></span>
+                                <span class="stat-badge">物化视图</span>
+                            </div>
+                        </div>
+                        <div class="table-status active">活跃</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
         <!-- 数据流转时间线 -->
         <section class="card lineage-card glow-border">
             <h3>⏱️ 数据流转时间线</h3>
@@ -296,10 +388,16 @@
         </section>
     </main>
 
+    <!-- 底部版权 -->
+    <footer class="footer-section">
+        <p>&copy; 2026 银航宝·深蓝启航 | Fan版权所有 | Data Lineage</p>
+    </footer>
+
     <div class="toast" id="lineageToast" role="status" aria-live="polite"></div>
 
     <script src="/static/js/dashboard/state.js"></script>
     <script src="/static/js/dashboard/utils.js"></script>
     <script src="/static/js/lineage.js"></script>
+    <script src="/static/js/lineage_enhanced.js"></script>
 </body>
 </html>
