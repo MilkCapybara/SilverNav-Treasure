@@ -304,7 +304,7 @@ async def get_timeliness():
         with db_conn("read") as conn:
             # AIS轨迹数据
             ais_time = query_one(conn, """
-                SELECT MAX(updated_at) as last_update
+                SELECT MAX(created_at) as last_update
                 FROM vessels
                 WHERE is_active = true
             """, ())
@@ -318,7 +318,7 @@ async def get_timeliness():
 
             # 船舶画像数据（使用vessels表的更新时间）
             profile_time = query_one(conn, """
-                SELECT MAX(updated_at) as last_update
+                SELECT MAX(created_at) as last_update
                 FROM vessels
                 WHERE is_active = true
             """, ())
@@ -326,7 +326,7 @@ async def get_timeliness():
             # 汇率数据
             rate_time = query_one(conn, """
                 SELECT MAX(rate_date) as last_update
-                FROM exchange_rates
+                FROM fx_rates
             """, ())
 
         now = datetime.now()

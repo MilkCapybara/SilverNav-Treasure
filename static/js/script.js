@@ -482,7 +482,7 @@ function drawPortThroughput(current, frameScale) {
             ctx.lineTo(rightLegX + 18, topY);
             ctx.stroke();
 
-            ctx.strokeStyle = `rgba(255, 204, 96, ${0.3 + 0.4 * beamGlow})`;
+            ctx.strokeStyle = `rgba(0, 210, 255, ${0.4 + 0.5 * beamGlow})`;
             ctx.lineWidth = 1.4;
             ctx.beginPath();
             ctx.moveTo(trollyX, topY + 1);
@@ -490,7 +490,7 @@ function drawPortThroughput(current, frameScale) {
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.fillStyle = `rgba(255, 217, 132, ${0.45 + 0.4 * beamGlow})`;
+            ctx.fillStyle = `rgba(0, 255, 198, ${0.55 + 0.4 * beamGlow})`;
             ctx.arc(trollyX, bottomY - 10, 3, 0, Math.PI * 2);
             ctx.fill();
 
@@ -500,8 +500,8 @@ function drawPortThroughput(current, frameScale) {
             const sy = bottomY + 18;
             if (!isCenterProtected(sx, sy, 120)) {
                 const g = ctx.createLinearGradient(trollyX, bottomY - 10, sx, sy);
-                g.addColorStop(0, `rgba(255, 220, 132, ${0.36 + beamGlow * 0.35})`);
-                g.addColorStop(1, "rgba(255, 220, 132, 0)");
+                g.addColorStop(0, `rgba(0, 210, 255, ${0.46 + beamGlow * 0.4})`);
+                g.addColorStop(1, "rgba(0, 210, 255, 0)");
                 ctx.strokeStyle = g;
                 ctx.lineWidth = 3;
                 ctx.beginPath();
@@ -674,16 +674,16 @@ function drawDockedVessels(current) {
             const lx = x + shipW * (0.2 + l * 0.085);
             const ly = y + 60 * s;
             ctx.beginPath();
-            ctx.fillStyle = `rgba(255, 226, 138, ${lampAlpha})`;
+            ctx.fillStyle = `rgba(0, 255, 198, ${lampAlpha})`;
             ctx.shadowBlur = lampOn ? 16 : 4;
-            ctx.shadowColor = lampOn ? "rgba(255, 226, 138, 0.95)" : "rgba(255, 226, 138, 0.2)";
+            ctx.shadowColor = lampOn ? "rgba(0, 255, 198, 0.95)" : "rgba(0, 255, 198, 0.2)";
             ctx.arc(lx, ly, 1.9, 0, Math.PI * 2);
             ctx.fill();
         }
 
         if (!isCenterProtected(x + shipW * 0.58, y + 20 * s, 85)) {
             ctx.shadowBlur = 0;
-            ctx.fillStyle = `rgba(255, 230, 160, ${lampOn ? 0.58 : 0.22})`;
+            ctx.fillStyle = `rgba(0, 210, 255, ${lampOn ? 0.68 : 0.28})`;
             ctx.font = "10px monospace";
             ctx.fillText(v.morsePattern, x + shipW * 0.5, y + 18 * s);
         }
@@ -991,13 +991,13 @@ function meteorOutOfBounds(m) {
 function drawSingleMeteor(m) {
     const ctx = state.meteorCtx;
     const grad = ctx.createLinearGradient(m.x, m.y, m.x - m.vx * m.length, m.y - m.vy * m.length);
-    grad.addColorStop(0, `rgba(255, 213, 79, ${m.opacity})`);
-    grad.addColorStop(0.5, `rgba(255, 193, 7, ${m.opacity * 0.8})`);
-    grad.addColorStop(1, "rgba(255, 193, 7, 0)");
+    grad.addColorStop(0, `rgba(0, 255, 198, ${m.opacity})`);
+    grad.addColorStop(0.5, `rgba(0, 210, 255, ${m.opacity * 0.8})`);
+    grad.addColorStop(1, "rgba(0, 125, 255, 0)");
 
     ctx.lineWidth = m.width;
     ctx.strokeStyle = grad;
-    ctx.shadowColor = "rgba(255, 193, 7, 0.9)";
+    ctx.shadowColor = "rgba(0, 210, 255, 0.9)";
     ctx.shadowBlur = 14;
 
     ctx.beginPath();
@@ -1006,7 +1006,7 @@ function drawSingleMeteor(m) {
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.fillStyle = `rgba(255, 213, 79, ${clamp(m.opacity, 0, 1)})`;
+    ctx.fillStyle = `rgba(0, 255, 198, ${clamp(m.opacity, 0, 1)})`;
     ctx.arc(m.x, m.y, m.width * 0.65, 0, Math.PI * 2);
     ctx.fill();
 }
@@ -1086,12 +1086,12 @@ function createFireworkLaunch(current) {
         explodeAt: 0,
         particles: [],
         palette: [
+            "#00FFC6",
+            "#00D2FF",
+            "#0099FF",
             "#39f6ff",
-            "#6aff9b",
-            "#ff6ff2",
-            "#ffd75f",
             "#76a9ff",
-            "#ff8c66",
+            "#5ae3ff",
         ],
     };
 }

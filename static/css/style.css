@@ -1,14 +1,15 @@
 :root {
-    --deep-abyss: #123a63;
-    --electro-blue: #2f73b2;
+    --deep-abyss: #0A1F3F;
+    --ocean-depth: #123a63;
+    --electro-blue: #007DFF;
+    --cyber-blue: #0099FF;
     --aurora-cyan: #00FFC6;
+    --neon-cyan: #00D2FF;
     --signal-magenta: #ff3fa4;
-    --amber-main: #FFC107;
-    --amber-soft: #FFD54F;
-    --grid-color: rgba(0, 255, 198, 0.16);
-    --card-bg: rgba(10, 25, 47, 0.7);
-    --card-border: rgba(0, 210, 255, 0.35);
-    --text-faint: rgba(238, 245, 255, 0.76);
+    --grid-color: rgba(0, 210, 255, 0.18);
+    --card-bg: rgba(8, 20, 40, 0.75);
+    --card-border: rgba(0, 210, 255, 0.4);
+    --text-faint: rgba(238, 245, 255, 0.8);
 }
 
 * {
@@ -44,9 +45,19 @@ body.scene-collapsing {
     position: fixed;
     inset: 0;
     background:
-        radial-gradient(circle at 52% 50%, rgba(0, 255, 198, 0.2) 0%, rgba(0, 255, 198, 0.07) 24%, rgba(0, 0, 0, 0) 56%),
-        radial-gradient(circle at 50% 36%, rgba(62, 133, 206, 0.95) 0%, rgba(28, 74, 123, 0.93) 42%, #14395f 78%, #0f2e4f 100%);
+        radial-gradient(circle at 52% 50%, rgba(0, 210, 255, 0.25) 0%, rgba(0, 255, 198, 0.1) 24%, rgba(0, 0, 0, 0) 56%),
+        radial-gradient(circle at 50% 36%, rgba(0, 125, 255, 0.4) 0%, rgba(18, 58, 99, 0.95) 42%, #0A1F3F 78%, #061528 100%);
+    animation: oceanPulse 8s ease-in-out infinite;
     z-index: 0;
+}
+
+@keyframes oceanPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.92;
+    }
 }
 
 #gridCanvas,
@@ -315,7 +326,7 @@ body.scene-collapsing .sonar-center {
     font-size: 17px;
     letter-spacing: 4px;
     color: var(--text-faint);
-    text-shadow: 0 0 14px rgba(255, 193, 7, 0.42);
+    text-shadow: 0 0 14px rgba(0, 210, 255, 0.5);
     opacity: 0;
     animation: hintReveal 0.6s ease-out 3s forwards, hintBreath 2.5s ease-in-out 3.6s infinite;
 }
@@ -340,7 +351,7 @@ body.scene-collapsing .sonar-center {
 
     50% {
         opacity: 0.98;
-        text-shadow: 0 0 22px rgba(255, 193, 7, 0.76);
+        text-shadow: 0 0 22px rgba(0, 210, 255, 0.8);
     }
 }
 
@@ -368,6 +379,16 @@ body.scene-collapsing .brand-title {
     visibility: hidden;
     filter: blur(8px);
     transition: transform 0.6s cubic-bezier(0.22, 1.2, 0.24, 1), opacity 0.35s ease, filter 0.36s ease;
+    animation: containerFloat 6s ease-in-out infinite;
+}
+
+@keyframes containerFloat {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(0.92);
+    }
+    50% {
+        transform: translate(-50%, calc(-50% - 5px)) scale(0.92);
+    }
 }
 
 .auth-container.show {
@@ -375,6 +396,16 @@ body.scene-collapsing .brand-title {
     visibility: visible;
     transform: translate(-50%, -50%) scale(1);
     filter: blur(0);
+    animation: containerFloatShow 6s ease-in-out infinite;
+}
+
+@keyframes containerFloatShow {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        transform: translate(-50%, calc(-50% - 5px)) scale(1);
+    }
 }
 
 .auth-card {
@@ -385,8 +416,24 @@ body.scene-collapsing .brand-title {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     backdrop-filter: blur(20px);
-    box-shadow: 0 24px 80px rgba(0, 9, 26, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    box-shadow: 0 24px 80px rgba(0, 9, 26, 0.65),
+                inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                0 0 60px rgba(0, 210, 255, 0.15);
     overflow: hidden;
+    animation: cardBreath 4s ease-in-out infinite;
+}
+
+@keyframes cardBreath {
+    0%, 100% {
+        box-shadow: 0 24px 80px rgba(0, 9, 26, 0.65),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                    0 0 60px rgba(0, 210, 255, 0.15);
+    }
+    50% {
+        box-shadow: 0 24px 80px rgba(0, 9, 26, 0.65),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                    0 0 80px rgba(0, 210, 255, 0.25);
+    }
 }
 
 .auth-card::before {
@@ -395,7 +442,7 @@ body.scene-collapsing .brand-title {
     inset: -1px;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(45deg, rgba(0, 255, 198, 0.68), rgba(0, 125, 255, 0.72), rgba(255, 193, 7, 0.75), rgba(0, 255, 198, 0.68));
+    background: linear-gradient(45deg, rgba(0, 255, 198, 0.7), rgba(0, 125, 255, 0.75), rgba(0, 210, 255, 0.8), rgba(0, 255, 198, 0.7));
     background-size: 200% 200%;
     animation: borderScan 3.2s linear infinite;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -416,13 +463,30 @@ body.scene-collapsing .brand-title {
     min-height: clamp(420px, 58vh, 520px);
     border-radius: 20px;
     overflow: hidden;
-    border: 1px solid rgba(131, 206, 255, 0.22);
+    border: 1px solid rgba(0, 210, 255, 0.35);
     background:
-        radial-gradient(circle at 16% 12%, rgba(0, 255, 198, 0.13), rgba(0, 0, 0, 0) 34%),
-        linear-gradient(160deg, rgba(8, 31, 60, 0.9) 0%, rgba(7, 21, 43, 0.8) 100%);
-    box-shadow: inset 0 0 45px rgba(19, 116, 183, 0.28), 0 20px 40px rgba(0, 0, 0, 0.28);
+        radial-gradient(circle at 16% 12%, rgba(0, 210, 255, 0.15), rgba(0, 0, 0, 0) 34%),
+        linear-gradient(160deg, rgba(8, 31, 60, 0.95) 0%, rgba(7, 21, 43, 0.85) 100%);
+    box-shadow: inset 0 0 50px rgba(0, 210, 255, 0.25),
+                0 20px 40px rgba(0, 0, 0, 0.35),
+                0 0 40px rgba(0, 210, 255, 0.1);
     transform-style: preserve-3d;
-    transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.6s ease;
+    transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+                box-shadow 0.6s ease;
+    animation: cabinAmbient 5s ease-in-out infinite;
+}
+
+@keyframes cabinAmbient {
+    0%, 100% {
+        box-shadow: inset 0 0 50px rgba(0, 210, 255, 0.25),
+                    0 20px 40px rgba(0, 0, 0, 0.35),
+                    0 0 40px rgba(0, 210, 255, 0.1);
+    }
+    50% {
+        box-shadow: inset 0 0 60px rgba(0, 210, 255, 0.3),
+                    0 20px 40px rgba(0, 0, 0, 0.35),
+                    0 0 50px rgba(0, 210, 255, 0.15);
+    }
 }
 
 .tidal-cabin::after {
@@ -440,10 +504,10 @@ body.scene-collapsing .brand-title {
     inset: -2px;
     border-radius: 20px;
     background: linear-gradient(45deg,
-        rgba(0, 255, 198, 0.4),
-        rgba(0, 125, 255, 0.4),
-        rgba(255, 193, 7, 0.4),
-        rgba(0, 255, 198, 0.4));
+        rgba(0, 255, 198, 0.5),
+        rgba(0, 125, 255, 0.5),
+        rgba(0, 210, 255, 0.5),
+        rgba(0, 255, 198, 0.5));
     background-size: 300% 300%;
     opacity: 0;
     filter: blur(10px);
@@ -471,11 +535,31 @@ body.scene-collapsing .brand-title {
 }
 
 .auth-container.register-mode .cabin-left::after {
-    background: linear-gradient(118deg, rgba(0, 255, 198, 0.18) 0%, rgba(0, 255, 198, 0.05) 42%, rgba(0, 255, 198, 0) 100%);
+    background: linear-gradient(118deg, rgba(0, 210, 255, 0.22) 0%, rgba(0, 255, 198, 0.08) 42%, rgba(0, 255, 198, 0) 100%);
+    animation: dataFlowLeft 3s ease-in-out infinite;
 }
 
 .auth-container.register-mode .cabin-right::after {
-    background: linear-gradient(118deg, rgba(0, 125, 255, 0) 0%, rgba(0, 125, 255, 0.05) 58%, rgba(0, 125, 255, 0.18) 100%);
+    background: linear-gradient(118deg, rgba(0, 125, 255, 0) 0%, rgba(0, 210, 255, 0.08) 58%, rgba(0, 210, 255, 0.22) 100%);
+    animation: dataFlowRight 3s ease-in-out infinite;
+}
+
+@keyframes dataFlowLeft {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes dataFlowRight {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
 }
 
 .tidal-panel {
@@ -500,18 +584,47 @@ body.scene-collapsing .brand-title {
     line-height: 1.1;
     letter-spacing: 0.02em;
     color: #eaf7ff;
-    text-shadow: 0 0 26px rgba(100, 220, 255, 0.38);
+    text-shadow: 0 0 30px rgba(0, 210, 255, 0.5),
+                 0 0 60px rgba(0, 255, 198, 0.3);
     margin-bottom: 14px;
     animation: titleShimmer 4s ease-in-out infinite;
+    position: relative;
+}
+
+.panel-prompt h2::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg,
+        rgba(0, 210, 255, 0.8),
+        rgba(0, 255, 198, 0.6),
+        transparent);
+    animation: underlineGlow 3s ease-in-out infinite;
+}
+
+@keyframes underlineGlow {
+    0%, 100% {
+        opacity: 0.5;
+        transform: scaleX(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
 }
 
 @keyframes titleShimmer {
     0%, 100% {
-        text-shadow: 0 0 26px rgba(100, 220, 255, 0.38);
+        text-shadow: 0 0 30px rgba(0, 210, 255, 0.5),
+                     0 0 60px rgba(0, 255, 198, 0.3);
     }
     50% {
-        text-shadow: 0 0 40px rgba(100, 220, 255, 0.6),
-                     0 0 60px rgba(0, 255, 198, 0.3);
+        text-shadow: 0 0 45px rgba(0, 210, 255, 0.8),
+                     0 0 90px rgba(0, 255, 198, 0.5),
+                     0 0 120px rgba(0, 125, 255, 0.3);
     }
 }
 
@@ -528,9 +641,9 @@ body.scene-collapsing .brand-title {
 }
 
 .switch-btn {
-    border: 1px solid rgba(128, 221, 255, 0.52);
+    border: 2px solid rgba(0, 210, 255, 0.6);
     border-radius: 999px;
-    background: rgba(13, 51, 82, 0.54);
+    background: linear-gradient(135deg, rgba(0, 125, 255, 0.2), rgba(0, 210, 255, 0.15));
     color: #d9f4ff;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -541,7 +654,10 @@ body.scene-collapsing .brand-title {
     transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
                 box-shadow 0.3s ease,
                 color 0.3s ease,
-                border-color 0.3s ease;
+                border-color 0.3s ease,
+                background 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 210, 255, 0.2),
+                inset 0 0 20px rgba(0, 210, 255, 0.1);
 }
 
 .switch-btn::before {
@@ -552,23 +668,49 @@ body.scene-collapsing .brand-title {
     width: 0;
     height: 0;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(0, 255, 198, 0.4), transparent 70%);
+    background: radial-gradient(circle, rgba(0, 210, 255, 0.5), rgba(0, 255, 198, 0.3) 50%, transparent 70%);
     transform: translate(-50%, -50%);
     transition: width 0.6s ease, height 0.6s ease;
+    animation: rippleEffect 3s ease-in-out infinite;
+}
+
+@keyframes rippleEffect {
+    0%, 100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 0.6;
+    }
 }
 
 .switch-btn:hover::before {
     width: 300px;
     height: 300px;
+    animation: none;
 }
 
 .switch-btn:hover {
     transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 0 30px rgba(0, 255, 198, 0.4),
-                0 0 60px rgba(0, 255, 198, 0.2),
-                inset 0 0 20px rgba(0, 255, 198, 0.1);
+    box-shadow: 0 0 40px rgba(0, 210, 255, 0.6),
+                0 0 80px rgba(0, 255, 198, 0.4),
+                inset 0 0 30px rgba(0, 210, 255, 0.2);
     color: #fff;
-    border-color: rgba(0, 255, 198, 0.8);
+    border-color: rgba(0, 210, 255, 0.9);
+    background: linear-gradient(135deg, rgba(0, 125, 255, 0.4), rgba(0, 210, 255, 0.3));
+    animation: switchButtonGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes switchButtonGlow {
+    0%, 100% {
+        box-shadow: 0 0 40px rgba(0, 210, 255, 0.6),
+                    0 0 80px rgba(0, 255, 198, 0.4),
+                    inset 0 0 30px rgba(0, 210, 255, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 50px rgba(0, 210, 255, 0.8),
+                    0 0 100px rgba(0, 255, 198, 0.5),
+                    inset 0 0 40px rgba(0, 210, 255, 0.3);
+    }
 }
 
 .switch-btn:active {
@@ -587,24 +729,54 @@ body.scene-collapsing .brand-title {
     letter-spacing: 0.08em;
     color: #eef7ff;
     text-shadow:
-        0 0 10px rgba(0, 255, 198, 0.85),
-        0 0 22px rgba(0, 170, 255, 0.65),
-        0 0 42px rgba(255, 92, 206, 0.35);
+        0 0 15px rgba(0, 210, 255, 0.9),
+        0 0 30px rgba(0, 255, 198, 0.7),
+        0 0 50px rgba(0, 125, 255, 0.5);
     animation: bannerPulse 3s ease-in-out infinite;
+    position: relative;
+}
+
+.ready-banner::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(0, 210, 255, 0.8),
+        rgba(0, 255, 198, 0.6),
+        transparent);
+    animation: bannerUnderline 3s ease-in-out infinite;
+}
+
+@keyframes bannerUnderline {
+    0%, 100% {
+        opacity: 0.5;
+        width: 80%;
+    }
+    50% {
+        opacity: 1;
+        width: 100%;
+    }
 }
 
 @keyframes bannerPulse {
     0%, 100% {
         text-shadow:
-            0 0 10px rgba(0, 255, 198, 0.85),
-            0 0 22px rgba(0, 170, 255, 0.65),
-            0 0 42px rgba(255, 92, 206, 0.35);
+            0 0 15px rgba(0, 210, 255, 0.9),
+            0 0 30px rgba(0, 255, 198, 0.7),
+            0 0 50px rgba(0, 125, 255, 0.5);
+        transform: scale(1);
     }
     50% {
         text-shadow:
-            0 0 20px rgba(0, 255, 198, 1),
-            0 0 35px rgba(0, 170, 255, 0.85),
-            0 0 60px rgba(255, 92, 206, 0.5);
+            0 0 25px rgba(0, 210, 255, 1),
+            0 0 50px rgba(0, 255, 198, 0.9),
+            0 0 80px rgba(0, 125, 255, 0.7);
+        transform: scale(1.02);
     }
 }
 
@@ -616,9 +788,9 @@ body.scene-collapsing .brand-title {
 }
 
 .tidal-form input {
-    border: 1px solid rgba(160, 212, 255, 0.28);
+    border: 1px solid rgba(0, 210, 255, 0.35);
     border-radius: 30px;
-    background: rgba(17, 41, 73, 0.56);
+    background: rgba(10, 30, 55, 0.6);
     color: #f4f9ff;
     outline: none;
     font-size: 17px;
@@ -629,6 +801,7 @@ body.scene-collapsing .brand-title {
                 box-shadow 0.3s ease,
                 background 0.3s ease,
                 transform 0.3s ease;
+    box-shadow: inset 0 0 15px rgba(0, 210, 255, 0.05);
 }
 
 .tidal-form input::placeholder {
@@ -637,8 +810,10 @@ body.scene-collapsing .brand-title {
 }
 
 .tidal-form input:hover {
-    border-color: rgba(0, 255, 198, 0.4);
-    background: rgba(17, 41, 73, 0.7);
+    border-color: rgba(0, 210, 255, 0.5);
+    background: rgba(10, 30, 55, 0.75);
+    box-shadow: inset 0 0 20px rgba(0, 210, 255, 0.1),
+                0 0 15px rgba(0, 210, 255, 0.2);
 }
 
 .tidal-form input:hover::placeholder {
@@ -649,11 +824,25 @@ body.scene-collapsing .brand-title {
     border-color: transparent;
     background:
         linear-gradient(rgba(16, 42, 73, 0.85), rgba(16, 42, 73, 0.85)) padding-box,
-        linear-gradient(90deg, rgba(0, 255, 198, 0.8), rgba(0, 125, 255, 0.9)) border-box;
-    box-shadow: 0 0 20px rgba(0, 255, 198, 0.4),
-                0 0 40px rgba(0, 255, 198, 0.2),
-                inset 0 0 15px rgba(0, 255, 198, 0.1);
+        linear-gradient(90deg, rgba(0, 255, 198, 0.9), rgba(0, 210, 255, 0.9)) border-box;
+    box-shadow: 0 0 25px rgba(0, 210, 255, 0.5),
+                0 0 50px rgba(0, 255, 198, 0.3),
+                inset 0 0 20px rgba(0, 210, 255, 0.15);
     transform: translateY(-2px);
+    animation: inputGlow 2s ease-in-out infinite;
+}
+
+@keyframes inputGlow {
+    0%, 100% {
+        box-shadow: 0 0 25px rgba(0, 210, 255, 0.5),
+                    0 0 50px rgba(0, 255, 198, 0.3),
+                    inset 0 0 20px rgba(0, 210, 255, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 35px rgba(0, 210, 255, 0.7),
+                    0 0 70px rgba(0, 255, 198, 0.4),
+                    inset 0 0 25px rgba(0, 210, 255, 0.2);
+    }
 }
 
 .tidal-form button {
@@ -666,12 +855,26 @@ body.scene-collapsing .brand-title {
     letter-spacing: 0.08em;
     color: #08253a;
     cursor: pointer;
-    background: linear-gradient(90deg, #00A6FF 0%, #00FFC6 100%);
-    box-shadow: inset 0 -7px 18px rgba(0, 83, 109, 0.28), 0 8px 18px rgba(0, 255, 198, 0.2);
+    background: linear-gradient(135deg, #00D2FF 0%, #00FFC6 50%, #00A6FF 100%);
+    background-size: 200% 200%;
+    box-shadow: inset 0 -7px 18px rgba(0, 83, 109, 0.28),
+                0 8px 18px rgba(0, 255, 198, 0.3),
+                0 0 30px rgba(0, 210, 255, 0.2);
     position: relative;
     overflow: hidden;
     transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
-                box-shadow 0.3s ease;
+                box-shadow 0.3s ease,
+                background-position 0.5s ease;
+    animation: buttonPulse 3s ease-in-out infinite;
+}
+
+@keyframes buttonPulse {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
 }
 
 .tidal-form button::before {
@@ -695,8 +898,25 @@ body.scene-collapsing .brand-title {
 .tidal-form button:hover {
     transform: scale(1.05) translateY(-2px);
     box-shadow: inset 0 -10px 26px rgba(0, 56, 95, 0.35),
-                0 12px 28px rgba(0, 255, 198, 0.4),
-                0 0 40px rgba(0, 255, 198, 0.3);
+                0 12px 28px rgba(0, 255, 198, 0.5),
+                0 0 50px rgba(0, 210, 255, 0.4),
+                0 0 80px rgba(0, 255, 198, 0.3);
+    animation: buttonHoverPulse 1s ease-in-out infinite;
+}
+
+@keyframes buttonHoverPulse {
+    0%, 100% {
+        box-shadow: inset 0 -10px 26px rgba(0, 56, 95, 0.35),
+                    0 12px 28px rgba(0, 255, 198, 0.5),
+                    0 0 50px rgba(0, 210, 255, 0.4),
+                    0 0 80px rgba(0, 255, 198, 0.3);
+    }
+    50% {
+        box-shadow: inset 0 -10px 26px rgba(0, 56, 95, 0.35),
+                    0 15px 35px rgba(0, 255, 198, 0.6),
+                    0 0 70px rgba(0, 210, 255, 0.5),
+                    0 0 100px rgba(0, 255, 198, 0.4);
+    }
 }
 
 .tidal-form button:active {
@@ -722,17 +942,49 @@ body.scene-collapsing .brand-title {
 .auth-container.register-mode .cabin-left {
     transform: rotateY(8deg) translateZ(20px);
     box-shadow:
-        inset 0 0 60px rgba(0, 255, 198, 0.35),
-        0 30px 60px rgba(0, 255, 198, 0.25),
-        0 0 80px rgba(0, 255, 198, 0.15);
+        inset 0 0 80px rgba(0, 210, 255, 0.4),
+        0 30px 60px rgba(0, 210, 255, 0.3),
+        0 0 100px rgba(0, 255, 198, 0.25);
+    animation: cabinGlowLeft 2s ease-in-out infinite;
 }
 
 .auth-container.register-mode .cabin-right {
     transform: rotateY(-8deg) translateZ(20px);
     box-shadow:
-        inset 0 0 60px rgba(0, 125, 255, 0.35),
-        0 30px 60px rgba(0, 125, 255, 0.25),
-        0 0 80px rgba(0, 125, 255, 0.15);
+        inset 0 0 80px rgba(0, 125, 255, 0.4),
+        0 30px 60px rgba(0, 125, 255, 0.3),
+        0 0 100px rgba(0, 210, 255, 0.25);
+    animation: cabinGlowRight 2s ease-in-out infinite;
+}
+
+@keyframes cabinGlowLeft {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 80px rgba(0, 210, 255, 0.4),
+            0 30px 60px rgba(0, 210, 255, 0.3),
+            0 0 100px rgba(0, 255, 198, 0.25);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 100px rgba(0, 210, 255, 0.5),
+            0 35px 70px rgba(0, 210, 255, 0.4),
+            0 0 120px rgba(0, 255, 198, 0.35);
+    }
+}
+
+@keyframes cabinGlowRight {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 80px rgba(0, 125, 255, 0.4),
+            0 30px 60px rgba(0, 125, 255, 0.3),
+            0 0 100px rgba(0, 210, 255, 0.25);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 100px rgba(0, 125, 255, 0.5),
+            0 35px 70px rgba(0, 125, 255, 0.4),
+            0 0 120px rgba(0, 210, 255, 0.35);
+    }
 }
 
 .auth-container.register-mode .left-prompt,
@@ -780,8 +1032,8 @@ body.scene-collapsing .brand-title {
 }
 
 .links a:hover {
-    color: var(--amber-soft);
-    text-shadow: 0 0 16px rgba(255, 193, 7, 0.9);
+    color: var(--aurora-cyan);
+    text-shadow: 0 0 16px rgba(0, 255, 198, 0.9);
 }
 
 .toast {
@@ -795,17 +1047,31 @@ body.scene-collapsing .brand-title {
     text-align: center;
     padding: 10px 16px;
     border-radius: 999px;
-    border: 1px solid rgba(0, 255, 198, 0.4);
-    background: rgba(10, 24, 43, 0.88);
-    color: rgba(240, 248, 255, 0.9);
+    border: 2px solid rgba(0, 210, 255, 0.6);
+    background: rgba(8, 20, 40, 0.92);
+    color: rgba(240, 248, 255, 0.95);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 0 30px rgba(0, 210, 255, 0.3),
+                inset 0 0 20px rgba(0, 210, 255, 0.1);
 }
 
 .toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+    animation: toastGlow 2s ease-in-out infinite;
+}
+
+@keyframes toastGlow {
+    0%, 100% {
+        box-shadow: 0 0 30px rgba(0, 210, 255, 0.3),
+                    inset 0 0 20px rgba(0, 210, 255, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(0, 210, 255, 0.5),
+                    inset 0 0 25px rgba(0, 210, 255, 0.15);
+    }
 }
 
 .toast.error {

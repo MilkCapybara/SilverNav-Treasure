@@ -6,8 +6,9 @@
     position: absolute;
     inset: -100%;
     background:
-        radial-gradient(circle at 20% 30%, rgba(0, 255, 198, 0.03) 0%, transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(0, 125, 255, 0.03) 0%, transparent 50%);
+        radial-gradient(circle at 20% 30%, rgba(0, 255, 198, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(0, 125, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(0, 210, 255, 0.05) 0%, transparent 60%);
     animation: dataFlowRotate 20s linear infinite;
     pointer-events: none;
     z-index: -1;
@@ -22,19 +23,24 @@
     }
 }
 
-/* 扫描线效果 */
+/* 扫描线效果 - 增强版 */
 .auth-card::after {
     content: "";
     position: absolute;
     top: -100%;
     left: 0;
     right: 0;
-    height: 2px;
+    height: 3px;
     background: linear-gradient(90deg,
         transparent,
+        rgba(0, 210, 255, 0.3),
+        rgba(0, 210, 255, 0.95),
         rgba(0, 255, 198, 0.8),
+        rgba(0, 210, 255, 0.95),
+        rgba(0, 210, 255, 0.3),
         transparent);
-    box-shadow: 0 0 20px rgba(0, 255, 198, 0.8);
+    box-shadow: 0 0 30px rgba(0, 210, 255, 1),
+                0 0 60px rgba(0, 255, 198, 0.8);
     animation: scanLine 4s linear infinite;
     pointer-events: none;
     z-index: 10;
@@ -57,7 +63,7 @@
     }
 }
 
-/* 切换时的粒子爆发效果 */
+/* 切换时的液态波纹扩散效果 - 增强版 */
 .auth-container.register-mode .tidal-shell::before {
     content: "";
     position: absolute;
@@ -65,62 +71,135 @@
     left: 50%;
     width: 10px;
     height: 10px;
-    background: radial-gradient(circle, rgba(0, 255, 198, 0.8), transparent 70%);
+    background: radial-gradient(circle,
+        rgba(0, 210, 255, 1) 0%,
+        rgba(0, 255, 198, 0.8) 30%,
+        rgba(0, 125, 255, 0.6) 50%,
+        transparent 70%);
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    animation: particleBurst 0.8s ease-out;
+    animation: liquidRipple 1.2s ease-out;
     pointer-events: none;
     z-index: 100;
 }
 
-@keyframes particleBurst {
+@keyframes liquidRipple {
     0% {
         width: 10px;
         height: 10px;
         opacity: 1;
+        box-shadow: 0 0 0 0 rgba(0, 210, 255, 1),
+                    0 0 0 0 rgba(0, 255, 198, 0.8),
+                    0 0 0 0 rgba(0, 125, 255, 0.6);
+    }
+    30% {
+        box-shadow: 0 0 60px 30px rgba(0, 210, 255, 0.8),
+                    0 0 120px 60px rgba(0, 255, 198, 0.6),
+                    0 0 180px 90px rgba(0, 125, 255, 0.4);
     }
     100% {
-        width: 600px;
-        height: 600px;
+        width: 1000px;
+        height: 1000px;
         opacity: 0;
+        box-shadow: 0 0 150px 75px rgba(0, 210, 255, 0),
+                    0 0 300px 150px rgba(0, 255, 198, 0),
+                    0 0 450px 225px rgba(0, 125, 255, 0);
     }
 }
 
-/* 数据流线条 */
+/* 切换时的数据粒子爆发 - 增强版 */
+.auth-container.register-mode .tidal-shell::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(circle, rgba(0, 255, 198, 1) 2px, transparent 2px),
+        radial-gradient(circle, rgba(0, 210, 255, 1) 1.5px, transparent 1.5px),
+        radial-gradient(circle, rgba(0, 125, 255, 1) 1px, transparent 1px),
+        radial-gradient(circle, rgba(0, 255, 198, 0.8) 1px, transparent 1px);
+    background-size: 60px 60px, 90px 90px, 120px 120px, 45px 45px;
+    background-position: 0 0, 30px 30px, 60px 60px, 15px 15px;
+    transform: translate(-50%, -50%);
+    animation: particleExplosion 1.5s ease-out;
+    pointer-events: none;
+    z-index: 99;
+}
+
+@keyframes particleExplosion {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    }
+    20% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(4) rotate(180deg);
+    }
+}
+
+/* 数据流线条 - 增强版 */
 .tidal-cabin::after {
     animation: dataStreamFlow 3s ease-in-out infinite;
 }
 
 @keyframes dataStreamFlow {
     0%, 100% {
-        background: linear-gradient(118deg, rgba(120, 255, 239, 0.08) 0%, rgba(0, 0, 0, 0) 42%, rgba(146, 197, 255, 0.08) 100%);
+        background: linear-gradient(118deg,
+            rgba(0, 255, 198, 0.12) 0%,
+            rgba(0, 210, 255, 0.08) 25%,
+            rgba(0, 0, 0, 0) 42%,
+            rgba(0, 125, 255, 0.08) 75%,
+            rgba(0, 210, 255, 0.12) 100%);
     }
     50% {
-        background: linear-gradient(118deg, rgba(120, 255, 239, 0.15) 0%, rgba(0, 0, 0, 0) 42%, rgba(146, 197, 255, 0.15) 100%);
+        background: linear-gradient(118deg,
+            rgba(0, 255, 198, 0.22) 0%,
+            rgba(0, 210, 255, 0.15) 25%,
+            rgba(0, 0, 0, 0) 42%,
+            rgba(0, 125, 255, 0.15) 75%,
+            rgba(0, 210, 255, 0.22) 100%);
     }
 }
 
-/* 矩阵雨效果（轻量版） */
+/* 矩阵雨效果（轻量版） - 增强版 */
 .auth-container::after {
     content: "";
     position: absolute;
     inset: 0;
     background-image:
-        linear-gradient(transparent 0%, rgba(0, 255, 198, 0.05) 50%, transparent 100%);
-    background-size: 2px 20px;
+        linear-gradient(transparent 0%, rgba(0, 210, 255, 0.08) 50%, transparent 100%),
+        linear-gradient(transparent 0%, rgba(0, 255, 198, 0.06) 50%, transparent 100%);
+    background-size: 2px 20px, 3px 30px;
     background-repeat: repeat;
-    animation: matrixRain 2s linear infinite;
+    animation: matrixRain 2s linear infinite, matrixRainSecondary 3s linear infinite;
     pointer-events: none;
-    opacity: 0.3;
+    opacity: 0.5;
     z-index: 1;
 }
 
 @keyframes matrixRain {
     0% {
-        background-position: 0 0;
+        background-position: 0 0, 0 0;
     }
     100% {
-        background-position: 0 20px;
+        background-position: 0 20px, 0 30px;
+    }
+}
+
+@keyframes matrixRainSecondary {
+    0% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 0.5;
     }
 }
 
@@ -129,46 +208,33 @@
     position: relative;
 }
 
-.tidal-cabin::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 20px;
-    background: linear-gradient(45deg,
-        rgba(0, 255, 198, 0.4),
-        rgba(0, 125, 255, 0.4),
-        rgba(255, 193, 7, 0.4),
-        rgba(0, 255, 198, 0.4));
-    background-size: 300% 300%;
-    opacity: 0;
-    filter: blur(10px);
-    animation: borderFlow 4s linear infinite;
-    pointer-events: none;
-    z-index: -1;
-    transition: opacity 0.6s ease;
-}
-
-/* 切换时的光波扩散 */
+/* 切换时的光波扩散 - 增强版 */
 .auth-container.register-mode::before {
-    animation: lightWaveExpand 1s ease-out;
+    animation: lightWaveExpand 1.5s ease-out;
 }
 
 @keyframes lightWaveExpand {
     0% {
-        box-shadow: inset 0 0 0 0 rgba(0, 255, 198, 0.5);
+        box-shadow: inset 0 0 0 0 rgba(0, 210, 255, 0.8);
+    }
+    30% {
+        box-shadow: inset 0 0 80px 40px rgba(0, 210, 255, 0.5);
+    }
+    60% {
+        box-shadow: inset 0 0 150px 75px rgba(0, 210, 255, 0.3);
     }
     100% {
-        box-shadow: inset 0 0 200px 100px rgba(0, 255, 198, 0);
+        box-shadow: inset 0 0 250px 125px rgba(0, 210, 255, 0);
     }
 }
 
-/* 能量脉冲环 */
+/* 能量脉冲环 - 增强版 */
 .auth-container.register-mode .cabin-left::after,
 .auth-container.register-mode .cabin-right::after {
     content: "";
     position: absolute;
     inset: -20px;
-    border: 2px solid rgba(0, 255, 198, 0.5);
+    border: 3px solid rgba(0, 210, 255, 0.8);
     border-radius: 20px;
     animation: energyPulse 2s ease-out infinite;
     pointer-events: none;
@@ -178,49 +244,61 @@
     0% {
         inset: -20px;
         opacity: 1;
-        border-width: 2px;
+        border-width: 3px;
+        box-shadow: 0 0 30px rgba(0, 210, 255, 1),
+                    0 0 60px rgba(0, 255, 198, 0.8),
+                    inset 0 0 30px rgba(0, 210, 255, 0.6);
     }
     100% {
-        inset: -40px;
+        inset: -60px;
         opacity: 0;
         border-width: 0;
+        box-shadow: 0 0 80px rgba(0, 210, 255, 0),
+                    0 0 120px rgba(0, 255, 198, 0),
+                    inset 0 0 80px rgba(0, 210, 255, 0);
     }
 }
 
-/* 数字雨背景 */
+/* 数字雨背景 - 增强版 */
 .tidal-form::before {
-    content: "01001001 01001110 01010000 01010101 01010100";
+    content: "01001001 01001110 01010000 01010101 01010100 ▸ SECURE CONNECTION ▸ ENCRYPTED";
     position: absolute;
     top: -30px;
     left: 0;
     right: 0;
     font-family: 'Courier New', monospace;
     font-size: 10px;
-    color: rgba(0, 255, 198, 0.15);
+    color: rgba(0, 210, 255, 0.25);
     letter-spacing: 2px;
     text-align: center;
-    animation: binaryFlow 10s linear infinite;
+    animation: binaryFlow 12s linear infinite;
     pointer-events: none;
     overflow: hidden;
     white-space: nowrap;
+    text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
 }
 
 @keyframes binaryFlow {
     0% {
         transform: translateX(-100%);
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
     }
     100% {
         transform: translateX(100%);
+        opacity: 0.5;
     }
 }
 
-/* 输入框聚焦时的能量环 */
+/* 输入框聚焦时的能量环 - 增强版 */
 .tidal-form input:focus::before {
     content: "";
     position: absolute;
     inset: -5px;
     border-radius: 30px;
-    border: 2px solid rgba(0, 255, 198, 0.5);
+    border: 2px solid rgba(0, 210, 255, 0.8);
     animation: inputEnergyRing 1s ease-out;
     pointer-events: none;
 }
@@ -229,21 +307,28 @@
     0% {
         inset: -5px;
         opacity: 1;
+        box-shadow: 0 0 30px rgba(0, 210, 255, 1),
+                    0 0 60px rgba(0, 255, 198, 0.8);
     }
     100% {
-        inset: -15px;
+        inset: -20px;
         opacity: 0;
+        box-shadow: 0 0 60px rgba(0, 210, 255, 0),
+                    0 0 120px rgba(0, 255, 198, 0);
     }
 }
 
-/* 按钮点击时的冲击波 */
+/* 按钮点击时的冲击波 - 增强版 */
 .tidal-form button:active::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 30px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.5), transparent 70%);
-    animation: shockwave 0.6s ease-out;
+    background: radial-gradient(circle,
+        rgba(0, 255, 198, 0.8),
+        rgba(0, 210, 255, 0.6) 40%,
+        transparent 70%);
+    animation: shockwave 0.8s ease-out;
     pointer-events: none;
 }
 
@@ -251,29 +336,38 @@
     0% {
         transform: scale(0);
         opacity: 1;
+        box-shadow: 0 0 0 0 rgba(0, 210, 255, 1),
+                    0 0 0 0 rgba(0, 255, 198, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 60px 30px rgba(0, 210, 255, 0.8),
+                    0 0 120px 60px rgba(0, 255, 198, 0.6);
     }
     100% {
-        transform: scale(2);
+        transform: scale(2.5);
         opacity: 0;
+        box-shadow: 0 0 120px 60px rgba(0, 210, 255, 0),
+                    0 0 240px 120px rgba(0, 255, 198, 0);
     }
 }
 
-/* 切换按钮的能量充能效果 */
+/* 切换按钮的能量充能效果 - 增强版 */
 .switch-btn:active {
-    animation: energyCharge 0.3s ease-out;
+    animation: energyCharge 0.4s ease-out;
 }
 
 @keyframes energyCharge {
     0%, 100% {
-        box-shadow: 0 0 30px rgba(0, 255, 198, 0.4);
+        box-shadow: 0 0 40px rgba(0, 210, 255, 0.6);
     }
     50% {
-        box-shadow: 0 0 60px rgba(0, 255, 198, 0.8),
-                    0 0 100px rgba(0, 255, 198, 0.4);
+        box-shadow: 0 0 80px rgba(0, 210, 255, 1),
+                    0 0 120px rgba(0, 255, 198, 0.8),
+                    inset 0 0 40px rgba(0, 210, 255, 0.6);
     }
 }
 
-/* 标题的全息闪烁 */
+/* 标题的全息闪烁 - 增强版 */
 .ready-banner {
     position: relative;
 }
@@ -284,40 +378,49 @@
     inset: 0;
     background: linear-gradient(90deg,
         transparent 0%,
-        rgba(0, 255, 198, 0.3) 50%,
+        rgba(0, 210, 255, 0.6) 50%,
         transparent 100%);
     background-size: 200% 100%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: hologramScan 3s linear infinite;
+    animation: hologramScan 2.5s linear infinite;
     pointer-events: none;
 }
 
 @keyframes hologramScan {
     0% {
         background-position: -200% 0;
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
     }
     100% {
         background-position: 200% 0;
+        opacity: 0.5;
     }
 }
 
-/* 面板切换时的3D翻转增强 */
+/* 面板切换时的3D翻转增强 + 波浪效果 */
 .auth-container.register-mode .left-prompt {
-    animation: flipOutLeft 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+    animation: flipOutLeft 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out;
 }
 
 .auth-container.register-mode .left-register-wrap {
-    animation: flipInRight 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+    animation: flipInRight 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out reverse;
 }
 
 .auth-container.register-mode .right-login-wrap {
-    animation: flipOutRight 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+    animation: flipOutRight 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out;
 }
 
 .auth-container.register-mode .right-prompt {
-    animation: flipInLeft 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+    animation: flipInLeft 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out reverse;
 }
 
 @keyframes flipOutLeft {
@@ -364,6 +467,121 @@
     }
 }
 
+@keyframes waveDistort {
+    0%, 100% {
+        filter: blur(0px);
+    }
+    50% {
+        filter: blur(3px);
+    }
+}
+
+/* 海洋波浪效果 - 增强版 */
+.auth-container.register-mode .cabin-left,
+.auth-container.register-mode .cabin-right {
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-container.register-mode .cabin-left::before,
+.auth-container.register-mode .cabin-right::before {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: -100%;
+    width: 300%;
+    height: 100%;
+    background: linear-gradient(0deg,
+        rgba(0, 210, 255, 0.2) 0%,
+        rgba(0, 255, 198, 0.15) 15%,
+        rgba(0, 125, 255, 0.1) 30%,
+        transparent 50%);
+    animation: oceanWave 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes oceanWave {
+    0%, 100% {
+        transform: translateX(0) translateY(0);
+    }
+    25% {
+        transform: translateX(16.66%) translateY(-5px);
+    }
+    50% {
+        transform: translateX(33.33%) translateY(-12px);
+    }
+    75% {
+        transform: translateX(16.66%) translateY(-5px);
+    }
+}
+
+/* 数据流光轨迹 - 增强版 */
+.auth-container.register-mode .tidal-cabin {
+    position: relative;
+}
+
+.auth-container.register-mode .tidal-cabin::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg,
+            transparent 0%,
+            rgba(0, 210, 255, 0.2) 30%,
+            rgba(0, 255, 198, 0.4) 50%,
+            rgba(0, 210, 255, 0.2) 70%,
+            transparent 100%);
+    background-size: 200% 100%;
+    animation: dataStreamSweep 1.8s ease-out;
+    pointer-events: none;
+    z-index: 2;
+    box-shadow: 0 0 40px rgba(0, 210, 255, 0.5);
+}
+
+@keyframes dataStreamSweep {
+    0% {
+        background-position: -200% 0;
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        background-position: 200% 0;
+        opacity: 0;
+    }
+}
+
+/* 全息网格效果 - 增强版 */
+.auth-container.register-mode::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(0, 210, 255, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 210, 255, 0.15) 1px, transparent 1px),
+        linear-gradient(rgba(0, 255, 198, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 198, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px, 40px 40px, 40px 40px;
+    background-position: 0 0, 0 0, 10px 10px, 10px 10px;
+    animation: gridPulse 2.5s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes gridPulse {
+    0%, 100% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
 /* 响应式优化 */
 @media (max-width: 768px) {
     .auth-container::before,
@@ -373,6 +591,518 @@
 
     .auth-container.register-mode .cabin-left::after,
     .auth-container.register-mode .cabin-right::after {
+        display: none;
+    }
+
+    .auth-container.register-mode .cabin-left::before,
+    .auth-container.register-mode .cabin-right::before {
+        display: none;
+    }
+}
+
+
+@keyframes dataFlowRotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* 扫描线效果 */
+.auth-card::after {
+    content: "";
+    position: absolute;
+    top: -100%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(0, 210, 255, 0.9),
+        transparent);
+    box-shadow: 0 0 20px rgba(0, 210, 255, 0.9);
+    animation: scanLine 4s linear infinite;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes scanLine {
+    0% {
+        top: -100%;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        top: 200%;
+        opacity: 0;
+    }
+}
+
+/* 切换时的液态波纹扩散效果 */
+.auth-container.register-mode .tidal-shell::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle, rgba(0, 210, 255, 0.9), rgba(0, 255, 198, 0.6) 40%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: liquidRipple 1s ease-out;
+    pointer-events: none;
+    z-index: 100;
+}
+
+@keyframes liquidRipple {
+    0% {
+        width: 10px;
+        height: 10px;
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.8),
+                    0 0 0 0 rgba(0, 255, 198, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 40px 20px rgba(0, 210, 255, 0.6),
+                    0 0 80px 40px rgba(0, 255, 198, 0.4);
+    }
+    100% {
+        width: 800px;
+        height: 800px;
+        opacity: 0;
+        box-shadow: 0 0 100px 50px rgba(0, 210, 255, 0),
+                    0 0 200px 100px rgba(0, 255, 198, 0);
+    }
+}
+
+/* 切换时的数据粒子爆发 */
+.auth-container.register-mode .tidal-shell::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(circle, rgba(0, 255, 198, 0.8) 1px, transparent 1px),
+        radial-gradient(circle, rgba(0, 210, 255, 0.8) 1px, transparent 1px),
+        radial-gradient(circle, rgba(0, 125, 255, 0.8) 1px, transparent 1px);
+    background-size: 50px 50px, 80px 80px, 100px 100px;
+    background-position: 0 0, 25px 25px, 50px 50px;
+    transform: translate(-50%, -50%);
+    animation: particleExplosion 1.2s ease-out;
+    pointer-events: none;
+    z-index: 99;
+}
+
+@keyframes particleExplosion {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0);
+    }
+    20% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(3);
+    }
+}
+
+/* 数据流线条 */
+.tidal-cabin::after {
+    animation: dataStreamFlow 3s ease-in-out infinite;
+}
+
+@keyframes dataStreamFlow {
+    0%, 100% {
+        background: linear-gradient(118deg, rgba(0, 255, 198, 0.1) 0%, rgba(0, 0, 0, 0) 42%, rgba(0, 210, 255, 0.1) 100%);
+    }
+    50% {
+        background: linear-gradient(118deg, rgba(0, 255, 198, 0.18) 0%, rgba(0, 0, 0, 0) 42%, rgba(0, 210, 255, 0.18) 100%);
+    }
+}
+
+/* 矩阵雨效果（轻量版） */
+.auth-container::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(transparent 0%, rgba(0, 210, 255, 0.06) 50%, transparent 100%);
+    background-size: 2px 20px;
+    background-repeat: repeat;
+    animation: matrixRain 2s linear infinite;
+    pointer-events: none;
+    opacity: 0.4;
+    z-index: 1;
+}
+
+@keyframes matrixRain {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: 0 20px;
+    }
+}
+
+/* 全息投影效果 */
+.tidal-cabin {
+    position: relative;
+}
+
+/* 切换时的光波扩散 */
+.auth-container.register-mode::before {
+    animation: lightWaveExpand 1.2s ease-out;
+}
+
+@keyframes lightWaveExpand {
+    0% {
+        box-shadow: inset 0 0 0 0 rgba(0, 210, 255, 0.6);
+    }
+    50% {
+        box-shadow: inset 0 0 100px 50px rgba(0, 210, 255, 0.3);
+    }
+    100% {
+        box-shadow: inset 0 0 200px 100px rgba(0, 210, 255, 0);
+    }
+}
+
+/* 能量脉冲环 */
+.auth-container.register-mode .cabin-left::after,
+.auth-container.register-mode .cabin-right::after {
+    content: "";
+    position: absolute;
+    inset: -20px;
+    border: 2px solid rgba(0, 210, 255, 0.6);
+    border-radius: 20px;
+    animation: energyPulse 2s ease-out infinite;
+    pointer-events: none;
+}
+
+@keyframes energyPulse {
+    0% {
+        inset: -20px;
+        opacity: 1;
+        border-width: 2px;
+        box-shadow: 0 0 20px rgba(0, 210, 255, 0.8),
+                    inset 0 0 20px rgba(0, 210, 255, 0.4);
+    }
+    100% {
+        inset: -50px;
+        opacity: 0;
+        border-width: 0;
+        box-shadow: 0 0 60px rgba(0, 210, 255, 0),
+                    inset 0 0 60px rgba(0, 210, 255, 0);
+    }
+}
+
+/* 数字雨背景 */
+.tidal-form::before {
+    content: "01001001 01001110 01010000 01010101 01010100";
+    position: absolute;
+    top: -30px;
+    left: 0;
+    right: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: rgba(0, 210, 255, 0.2);
+    letter-spacing: 2px;
+    text-align: center;
+    animation: binaryFlow 10s linear infinite;
+    pointer-events: none;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+@keyframes binaryFlow {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* 输入框聚焦时的能量环 */
+.tidal-form input:focus::before {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 30px;
+    border: 2px solid rgba(0, 210, 255, 0.6);
+    animation: inputEnergyRing 1s ease-out;
+    pointer-events: none;
+}
+
+@keyframes inputEnergyRing {
+    0% {
+        inset: -5px;
+        opacity: 1;
+        box-shadow: 0 0 20px rgba(0, 210, 255, 0.8);
+    }
+    100% {
+        inset: -15px;
+        opacity: 0;
+        box-shadow: 0 0 40px rgba(0, 210, 255, 0);
+    }
+}
+
+/* 按钮点击时的冲击波 */
+.tidal-form button:active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 30px;
+    background: radial-gradient(circle, rgba(0, 255, 198, 0.6), transparent 70%);
+    animation: shockwave 0.6s ease-out;
+    pointer-events: none;
+}
+
+@keyframes shockwave {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 40px 20px rgba(0, 210, 255, 0.6);
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+        box-shadow: 0 0 80px 40px rgba(0, 210, 255, 0);
+    }
+}
+
+/* 切换按钮的能量充能效果 */
+.switch-btn:active {
+    animation: energyCharge 0.3s ease-out;
+}
+
+@keyframes energyCharge {
+    0%, 100% {
+        box-shadow: 0 0 30px rgba(0, 210, 255, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 60px rgba(0, 210, 255, 0.9),
+                    0 0 100px rgba(0, 255, 198, 0.5);
+    }
+}
+
+/* 标题的全息闪烁 */
+.ready-banner {
+    position: relative;
+}
+
+.ready-banner::before {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(0, 210, 255, 0.4) 50%,
+        transparent 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: hologramScan 3s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes hologramScan {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* 面板切换时的3D翻转增强 + 波浪效果 */
+.auth-container.register-mode .left-prompt {
+    animation: flipOutLeft 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out;
+}
+
+.auth-container.register-mode .left-register-wrap {
+    animation: flipInRight 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out reverse;
+}
+
+.auth-container.register-mode .right-login-wrap {
+    animation: flipOutRight 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out;
+}
+
+.auth-container.register-mode .right-prompt {
+    animation: flipInLeft 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+               waveDistort 0.6s ease-out reverse;
+}
+
+@keyframes flipOutLeft {
+    0% {
+        transform: translateX(0) rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-40px) rotateY(15deg) scale(0.95);
+        opacity: 0;
+    }
+}
+
+@keyframes flipInRight {
+    0% {
+        transform: translateX(40px) rotateY(-15deg) scale(0.95);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0) rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes flipOutRight {
+    0% {
+        transform: translateX(0) rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(40px) rotateY(-15deg) scale(0.95);
+        opacity: 0;
+    }
+}
+
+@keyframes flipInLeft {
+    0% {
+        transform: translateX(-40px) rotateY(15deg) scale(0.95);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0) rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes waveDistort {
+    0%, 100% {
+        filter: blur(0px);
+    }
+    50% {
+        filter: blur(2px);
+    }
+}
+
+/* 海洋波浪效果 */
+.auth-container.register-mode .cabin-left,
+.auth-container.register-mode .cabin-right {
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-container.register-mode .cabin-left::before,
+.auth-container.register-mode .cabin-right::before {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: -100%;
+    width: 300%;
+    height: 100%;
+    background: linear-gradient(0deg,
+        rgba(0, 210, 255, 0.15) 0%,
+        rgba(0, 255, 198, 0.1) 20%,
+        transparent 40%);
+    animation: oceanWave 3s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes oceanWave {
+    0%, 100% {
+        transform: translateX(0) translateY(0);
+    }
+    50% {
+        transform: translateX(33.33%) translateY(-10px);
+    }
+}
+
+/* 数据流光轨迹 */
+.auth-container.register-mode .tidal-cabin {
+    position: relative;
+}
+
+.auth-container.register-mode .tidal-cabin::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, transparent 0%, rgba(0, 210, 255, 0.3) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: dataStreamSweep 1.5s ease-out;
+    pointer-events: none;
+    z-index: 2;
+}
+
+@keyframes dataStreamSweep {
+    0% {
+        background-position: -200% 0;
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        background-position: 200% 0;
+        opacity: 0;
+    }
+}
+
+/* 全息网格效果 */
+.auth-container.register-mode::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(0, 210, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 210, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    animation: gridPulse 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes gridPulse {
+    0%, 100% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .auth-container::before,
+    .auth-container::after {
+        display: none;
+    }
+
+    .auth-container.register-mode .cabin-left::after,
+    .auth-container.register-mode .cabin-right::after {
+        display: none;
+    }
+
+    .auth-container.register-mode .cabin-left::before,
+    .auth-container.register-mode .cabin-right::before {
         display: none;
     }
 }
