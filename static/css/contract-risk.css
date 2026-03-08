@@ -1,0 +1,694 @@
+/* 合同风险分析页面样式 */
+
+.contract-risk-page {
+    background: radial-gradient(circle at 20% 20%, rgba(60, 235, 220, 0.08), transparent 40%),
+        radial-gradient(circle at 80% 30%, rgba(79, 168, 255, 0.12), transparent 45%),
+        linear-gradient(130deg, #061624 0%, #0b223d 45%, #0f2c50 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* 修复背景装饰元素溢出问题 */
+.skyline,
+.grid-glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden !important;
+}
+
+/* 修复粒子容器溢出问题 */
+.particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden !important;
+}
+
+.contract-content {
+    position: relative;
+    z-index: 5;
+    padding: 20px 32px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* 统计概览 */
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(60, 235, 220, 0.2);
+}
+
+.stat-card.high-risk {
+    border-color: rgba(255, 90, 122, 0.4);
+}
+
+.stat-card.medium-risk {
+    border-color: rgba(255, 181, 3, 0.4);
+}
+
+.stat-card.low-risk {
+    border-color: rgba(60, 235, 220, 0.4);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--cyan-400);
+    line-height: 1;
+}
+
+.stat-percent {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* 主要内容网格布局 */
+.main-grid {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+/* 图表网格布局 */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+/* 搜索区域调整 */
+.search-section {
+    height: fit-content;
+}
+
+.search-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: var(--cyan-400);
+}
+
+.search-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.search-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.search-group input {
+    width: 100%;
+}
+
+.search-group button {
+    width: 100%;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.filter-group select,
+.filter-group input,
+.filter-group button {
+    width: 100%;
+}
+
+/* 环形图容器 */
+.chart-container-ring {
+    position: relative;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-container-ring canvas {
+    max-width: 300px;
+    max-height: 300px;
+}
+
+.chart-center-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.center-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.center-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--cyan-400);
+    line-height: 1;
+}
+
+/* 环形图图例 */
+.chart-legend-ring {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+    padding: 16px;
+    background: rgba(60, 235, 220, 0.05);
+    border-radius: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.legend-item.low .legend-dot {
+    background: rgba(60, 235, 220, 0.8);
+}
+
+.legend-item.medium .legend-dot {
+    background: rgba(255, 181, 3, 0.8);
+}
+
+.legend-item.high .legend-dot {
+    background: rgba(255, 90, 122, 0.8);
+}
+
+.legend-text {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.legend-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* 金额统计 */
+.amount-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.amount-stat-item {
+    background: rgba(60, 235, 220, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+
+.amount-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.amount-value {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--cyan-400);
+}
+
+/* 响应式调整 */
+@media (max-width: 1400px) {
+    .main-grid {
+        grid-template-columns: 350px 1fr;
+    }
+}
+
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .amount-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+.glow-input {
+    background: rgba(9, 28, 52, 0.6);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.glow-input:focus {
+    outline: none;
+    border-color: var(--cyan-400);
+    box-shadow: 0 0 12px rgba(60, 235, 220, 0.3);
+}
+
+.glow-btn,
+.search-btn {
+    background: linear-gradient(135deg, var(--cyan-400), var(--blue-400));
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    color: var(--navy-950);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.glow-btn:hover,
+.search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(60, 235, 220, 0.4);
+}
+
+.reset-btn {
+    background: rgba(255, 90, 122, 0.2);
+    border: 1px solid rgba(255, 90, 122, 0.4);
+    border-radius: 8px;
+    padding: 12px 24px;
+    color: var(--accent-red);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.reset-btn:hover {
+    background: rgba(255, 90, 122, 0.3);
+}
+
+/* 图表区域 */
+.chart-section {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.chart-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: var(--cyan-400);
+}
+
+.chart-container {
+    height: 350px;
+    position: relative;
+    width: 100%;
+}
+
+.chart-container canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 图表悬浮提示框样式 */
+#chartTooltip {
+    font-family: "Saira Condensed", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+/* 关键词云 */
+.keywords-section {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.keywords-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: var(--cyan-400);
+}
+
+.keywords-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-height: 100px;
+    align-items: center;
+    justify-content: center;
+}
+
+.keyword-tag {
+    background: rgba(255, 90, 122, 0.2);
+    border: 1px solid rgba(255, 90, 122, 0.4);
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: var(--accent-red);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.keyword-tag:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(255, 90, 122, 0.3);
+}
+
+.keyword-count {
+    background: rgba(255, 90, 122, 0.3);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.85rem;
+}
+
+/* 合同列表 */
+.contracts-list-section {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.contracts-list-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: var(--cyan-400);
+}
+
+.contracts-table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.contracts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.contracts-table th {
+    background: rgba(60, 235, 220, 0.1);
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--cyan-400);
+    border-bottom: 2px solid var(--glass-border);
+}
+
+.contracts-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-main);
+}
+
+.contracts-table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.contracts-table tbody tr:hover {
+    background: rgba(60, 235, 220, 0.05);
+}
+
+.risk-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.risk-badge.high {
+    background: rgba(255, 90, 122, 0.2);
+    color: var(--accent-red);
+    border: 1px solid rgba(255, 90, 122, 0.4);
+}
+
+.risk-badge.medium {
+    background: rgba(255, 181, 3, 0.2);
+    color: var(--yellow-500);
+    border: 1px solid rgba(255, 181, 3, 0.4);
+}
+
+.risk-badge.low {
+    background: rgba(60, 235, 220, 0.2);
+    color: var(--cyan-400);
+    border: 1px solid rgba(60, 235, 220, 0.4);
+}
+
+.view-btn {
+    background: linear-gradient(135deg, var(--cyan-400), var(--blue-400));
+    border: none;
+    border-radius: 6px;
+    padding: 6px 16px;
+    color: var(--navy-950);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(60, 235, 220, 0.4);
+}
+
+/* 分页 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.page-btn {
+    background: rgba(60, 235, 220, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 8px 20px;
+    color: var(--cyan-400);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: rgba(60, 235, 220, 0.3);
+    transform: translateY(-2px);
+}
+
+.page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.page-info {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* 弹窗 */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--navy-900);
+    border: 2px solid var(--glass-border);
+    border-radius: 16px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-header h3 {
+    font-size: 1.5rem;
+    color: var(--cyan-400);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    color: var(--accent-red);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.detail-section {
+    margin-bottom: 24px;
+}
+
+.detail-section h4 {
+    font-size: 1.2rem;
+    color: var(--cyan-400);
+    margin-bottom: 12px;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.detail-item {
+    background: rgba(60, 235, 220, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.detail-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 1.1rem;
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.loading {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px;
+}
+
+.loading-row {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+/* 返回按钮 */
+.back-btn {
+    background: rgba(60, 235, 220, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    color: var(--cyan-400);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+    background: rgba(60, 235, 220, 0.3);
+    transform: translateX(-4px);
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .stats-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .search-group,
+    .filter-group {
+        flex-direction: column;
+    }
+
+    .contracts-table {
+        font-size: 0.85rem;
+    }
+
+    .contracts-table th,
+    .contracts-table td {
+        padding: 8px;
+    }
+}

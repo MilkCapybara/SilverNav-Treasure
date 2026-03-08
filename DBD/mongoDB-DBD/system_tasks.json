@@ -1,7 +1,0 @@
-{
-  "_id": ObjectId,
-  "task_name": "daily_risk_batch",
-  "status": "success | failed | running",
-  "start_time": ISODate(),
-  "end_time": ISODate()
-}

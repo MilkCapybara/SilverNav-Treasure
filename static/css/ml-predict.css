@@ -17,7 +17,7 @@
     height: 100%;
     pointer-events: none;
     z-index: 1;
-    overflow: hidden;
+    overflow: hidden !important;
 }
 
 /* 动态粒子样式 */

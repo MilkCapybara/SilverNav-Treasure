@@ -2696,6 +2696,209 @@ async def get_behavior_summary(request: Request):
         return JSONResponse({"success": False, "msg": f"查询失败: {str(e)}"}, status_code=500)
 
 
+
+# ==================== 合同风险分析 API ====================
+
+@app.get("/contract-risk", response_class=HTMLResponse)
+async def contract_risk_page(request: Request):
+    """合同风险分析页面 - 不需要登录验证"""
+    return templates.TemplateResponse("contract_risk.html", {"request": request})
+
+
+class ContractSearchQuery(BaseModel):
+    """合同搜索查询"""
+    keyword: Optional[str] = None
+    risk_level: Optional[str] = None
+    min_score: Optional[float] = None
+    max_score: Optional[float] = None
+    vessel_imo: Optional[str] = None
+    page: int = 1
+    page_size: int = 20
+
+
+@app.post("/api/contracts/search")
+async def search_contracts(request: Request, query: ContractSearchQuery):
+    """搜索合同"""
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+        collection = db["contracts"]
+
+        # 构建查询条件
+        filter_query = {}
+
+        if query.keyword:
+            filter_query["$or"] = [
+                {"contract_id": {"$regex": query.keyword, "$options": "i"}},
+                {"vessel_name": {"$regex": query.keyword, "$options": "i"}},
+                {"company_name": {"$regex": query.keyword, "$options": "i"}},
+                {"vessel_imo": {"$regex": query.keyword, "$options": "i"}}
+            ]
+
+        if query.risk_level:
+            filter_query["risk_level"] = query.risk_level
+
+        if query.min_score is not None:
+            filter_query["risk_score"] = {"$gte": query.min_score}
+
+        if query.max_score is not None:
+            if "risk_score" in filter_query:
+                filter_query["risk_score"]["$lte"] = query.max_score
+            else:
+                filter_query["risk_score"] = {"$lte": query.max_score}
+
+        if query.vessel_imo:
+            filter_query["vessel_imo"] = query.vessel_imo
+
+        # 计算总数
+        total = collection.count_documents(filter_query)
+
+        # 分页查询
+        skip = (query.page - 1) * query.page_size
+        contracts = list(
+            collection.find(filter_query)
+            .sort("risk_score", -1)
+            .skip(skip)
+            .limit(query.page_size)
+        )
+
+        # 序列化结果
+        contracts_serialized = serialize_mongo_doc(contracts)
+
+        return JSONResponse({
+            "success": True,
+            "total": total,
+            "page": query.page,
+            "page_size": query.page_size,
+            "total_pages": (total + query.page_size - 1) // query.page_size,
+            "contracts": contracts_serialized
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"搜索失败: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/contracts/{contract_id}")
+async def get_contract_detail(request: Request, contract_id: str):
+    """获取合同详情"""
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+        collection = db["contracts"]
+
+        contract = collection.find_one({"contract_id": contract_id})
+
+        if not contract:
+            return JSONResponse({"success": False, "msg": "合同不存在"}, status_code=404)
+
+        # 序列化结果
+        contract_serialized = serialize_mongo_doc(contract)
+
+        return JSONResponse({
+            "success": True,
+            "contract": contract_serialized
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"查询失败: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/contracts/stats/overview")
+async def get_contracts_stats(request: Request):
+    """获取合同统计概览"""
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+        collection = db["contracts"]
+
+        # 总数统计
+        total = collection.count_documents({})
+        high_risk = collection.count_documents({"risk_level": "HIGH"})
+        medium_risk = collection.count_documents({"risk_level": "MEDIUM"})
+        low_risk = collection.count_documents({"risk_level": "LOW"})
+
+        # 平均风险评分
+        avg_score_result = list(collection.aggregate([
+            {"$group": {"_id": None, "avg_score": {"$avg": "$risk_score"}}}
+        ]))
+        avg_score = avg_score_result[0]["avg_score"] if avg_score_result else 0
+
+        # 风险评分分布
+        score_distribution = list(collection.aggregate([
+            {
+                "$bucket": {
+                    "groupBy": "$risk_score",
+                    "boundaries": [0, 20, 40, 60, 80, 100],
+                    "default": "Other",
+                    "output": {"count": {"$sum": 1}}
+                }
+            }
+        ]))
+
+        # 高风险关键词Top10
+        high_risk_keywords = list(collection.aggregate([
+            {"$match": {"risk_level": "HIGH"}},
+            {"$unwind": "$high_risk_keywords"},
+            {"$group": {
+                "_id": "$high_risk_keywords.keyword",
+                "total_count": {"$sum": "$high_risk_keywords.count"}
+            }},
+            {"$sort": {"total_count": -1}},
+            {"$limit": 10}
+        ]))
+
+        return JSONResponse({
+            "success": True,
+            "stats": {
+                "total": total,
+                "high_risk": high_risk,
+                "medium_risk": medium_risk,
+                "low_risk": low_risk,
+                "avg_score": round(avg_score, 2),
+                "high_risk_percent": round(high_risk / total * 100, 2) if total > 0 else 0,
+                "medium_risk_percent": round(medium_risk / total * 100, 2) if total > 0 else 0,
+                "low_risk_percent": round(low_risk / total * 100, 2) if total > 0 else 0,
+                "score_distribution": score_distribution,
+                "high_risk_keywords": high_risk_keywords
+            }
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"统计失败: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/contracts/stats/trend")
+async def get_contracts_trend(request: Request):
+    """获取合同风险趋势"""
+    try:
+        from app.database import get_mongo_db
+        db = get_mongo_db()
+        collection = db["contracts"]
+
+        # 按合同日期分组统计
+        trend = list(collection.aggregate([
+            {"$match": {"contract_date": {"$ne": None}}},
+            {"$group": {
+                "_id": "$contract_date",
+                "count": {"$sum": 1},
+                "avg_score": {"$avg": "$risk_score"},
+                "high_risk_count": {
+                    "$sum": {"$cond": [{"$eq": ["$risk_level", "HIGH"]}, 1, 0]}
+                }
+            }},
+            {"$sort": {"_id": 1}},
+            {"$limit": 30}
+        ]))
+
+        return JSONResponse({
+            "success": True,
+            "trend": trend
+        })
+
+    except Exception as e:
+        return JSONResponse({"success": False, "msg": f"趋势查询失败: {str(e)}"}, status_code=500)
+
+
 if __name__ == "__main__":
     import uvicorn
 

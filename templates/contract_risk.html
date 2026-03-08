@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银航宝 · 船舶合同风险分析</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard-controls.css">
+    <link rel="stylesheet" href="/static/css/sci-fi-select.css">
+    <link rel="stylesheet" href="/static/css/contract-risk.css">
+    <link rel="stylesheet" href="/static/css/global-effects.css">
+    <script src="/static/js/sci-fi-select.js"></script>
+</head>
+<body class="dashboard-body contract-risk-page">
+    <div class="skyline" aria-hidden="true"></div>
+    <div class="grid-glow" aria-hidden="true"></div>
+    <div class="particles" id="particles"></div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <button class="back-btn" id="backBtn" data-tip="返回总览大屏">返回大屏</button>
+            <div class="date-display">
+                <span class="date-label">数据源：</span>
+                <span class="date-value">HDFS分布式存储</span>
+            </div>
+        </div>
+        <div class="top-center">
+            <h1>📄 船舶合同风险分析</h1>
+            <p>基于NLP的智能合同风险评估</p>
+        </div>
+        <div class="top-right">
+            <div class="clock" id="cnClock">--</div>
+            <div class="meta">
+                <span class="tag">20,000份合同</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="contract-content">
+        <!-- 统计概览 -->
+        <section class="stats-overview">
+            <div class="stat-card glow-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <div class="stat-label">合同总数</div>
+                    <div class="stat-value" id="totalContracts">--</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card high-risk">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-info">
+                    <div class="stat-label">高风险合同</div>
+                    <div class="stat-value" id="highRiskContracts">--</div>
+                    <div class="stat-percent" id="highRiskPercent">--</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card medium-risk">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-info">
+                    <div class="stat-label">中风险合同</div>
+                    <div class="stat-value" id="mediumRiskContracts">--</div>
+                    <div class="stat-percent" id="mediumRiskPercent">--</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card low-risk">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <div class="stat-label">低风险合同</div>
+                    <div class="stat-value" id="lowRiskContracts">--</div>
+                    <div class="stat-percent" id="lowRiskPercent">--</div>
+                </div>
+            </div>
+            <div class="stat-card glow-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-info">
+                    <div class="stat-label">平均风险评分</div>
+                    <div class="stat-value" id="avgRiskScore">--</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 主要内容区域：左边检索，右边列表 -->
+        <div class="main-grid">
+            <!-- 左侧：合同检索 -->
+            <section class="card search-section glow-border">
+                <h3>🔍 合同检索</h3>
+                <div class="search-controls">
+                    <div class="search-group">
+                        <input type="text" id="searchKeyword" class="glow-input" placeholder="搜索合同编号、船舶名称、IMO编号...">
+                        <button class="search-btn glow-btn" id="searchBtn">搜索</button>
+                    </div>
+                    <div class="filter-group">
+                        <select id="riskLevelFilter" class="glow-input sci-fi-select">
+                            <option value="">全部风险等级</option>
+                            <option value="HIGH">高风险</option>
+                            <option value="MEDIUM">中风险</option>
+                            <option value="LOW">低风险</option>
+                        </select>
+                        <input type="number" id="minScoreFilter" class="glow-input" placeholder="最低评分" min="0" max="100">
+                        <input type="number" id="maxScoreFilter" class="glow-input" placeholder="最高评分" min="0" max="100">
+                        <button class="reset-btn" id="resetBtn">重置</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：合同列表 -->
+            <section class="card contracts-list-section glow-border">
+                <h3>📋 合同列表</h3>
+                <div class="contracts-table-wrapper">
+                    <table class="contracts-table">
+                        <thead>
+                            <tr>
+                                <th>合同编号</th>
+                                <th>合同类型</th>
+                                <th>船舶名称</th>
+                                <th>IMO编号</th>
+                                <th>企业名称</th>
+                                <th>本金金额</th>
+                                <th>利率</th>
+                                <th>风险等级</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contractsTableBody">
+                            <tr>
+                                <td colspan="9" class="loading-row">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="pagination">
+                    <button class="page-btn" id="prevPage" disabled>上一页</button>
+                    <span class="page-info" id="pageInfo">第 1 页 / 共 1 页</span>
+                    <button class="page-btn" id="nextPage">下一页</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- 底部图表区域：左边风险分布，右边合同金额分布 -->
+        <div class="charts-grid">
+            <!-- 左侧：风险评分分布（环形图） -->
+            <section class="card chart-section glow-border">
+                <h3>📊 风险等级分布</h3>
+                <div class="chart-container-ring">
+                    <canvas id="riskRingChart"></canvas>
+                    <div class="chart-center-text">
+                        <div class="center-label">总合同数</div>
+                        <div class="center-value" id="centerTotal">--</div>
+                    </div>
+                </div>
+                <div class="chart-legend-ring">
+                    <div class="legend-item low">
+                        <span class="legend-dot"></span>
+                        <span class="legend-text">低风险</span>
+                        <span class="legend-value" id="legendLow">--</span>
+                    </div>
+                    <div class="legend-item medium">
+                        <span class="legend-dot"></span>
+                        <span class="legend-text">中风险</span>
+                        <span class="legend-value" id="legendMedium">--</span>
+                    </div>
+                    <div class="legend-item high">
+                        <span class="legend-dot"></span>
+                        <span class="legend-text">高风险</span>
+                        <span class="legend-value" id="legendHigh">--</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：合同金额分布 -->
+            <section class="card chart-section glow-border">
+                <h3>💰 合同金额分布</h3>
+                <div class="chart-container">
+                    <canvas id="amountDistributionChart"></canvas>
+                </div>
+                <div class="amount-stats">
+                    <div class="amount-stat-item">
+                        <span class="amount-label">总金额</span>
+                        <span class="amount-value" id="totalAmount">--</span>
+                    </div>
+                    <div class="amount-stat-item">
+                        <span class="amount-label">平均金额</span>
+                        <span class="amount-value" id="avgAmount">--</span>
+                    </div>
+                    <div class="amount-stat-item">
+                        <span class="amount-label">最大金额</span>
+                        <span class="amount-value" id="maxAmount">--</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 合同详情弹窗 -->
+    <div class="modal" id="contractModal">
+        <div class="modal-content glow-border">
+            <div class="modal-header">
+                <h3>📄 合同详情</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-section">
+        <p>&copy; 2026 银航宝·深蓝启航 | Fan版权所有 | Contract Risk Analysis</p>
+    </footer>
+
+    <script src="/static/js/contract-risk.js"></script>
+</body>
+</html>
