@@ -150,7 +150,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 # 数据血缘追踪：http://localhost:8000/lineage
 # 智能风险预测：http://localhost:8000/ml-predict
 # 船舶合同风险：http://localhost:8000/contract-risk
-# 默认管理员账号：root / sunfannb0307SF?
 ```
 
 **合同风险分析功能**
@@ -413,7 +412,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 # Data Lineage Tracking: http://localhost:8000/lineage
 # Intelligent Risk Prediction: http://localhost:8000/ml-predict
 # Vessel Contract Risk: http://localhost:8000/contract-risk
-# Default Admin Account: root / sunfannb0307SF?
 ```
 
 **Development Progress**

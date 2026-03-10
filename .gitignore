@@ -19,6 +19,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+app/config.py
 
 # Virtual Environment
 venv/
@@ -45,6 +46,11 @@ logs/
 # Environment variables
 .env
 .env.local
+
+# Database and service configuration files (contains sensitive credentials)
+app/config.py
+config.py
+**/config.py
 
 # Machine Learning Models (optional, uncomment if models are large)
 # ml_models/*.pkl
