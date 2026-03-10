@@ -77,26 +77,61 @@ async def get_quality_metrics():
             # PostgreSQL整体质量分
             pg_quality_score = (vessels_score + companies_score + assets_score) / 3
 
-        # 2. MongoDB数据质量检查
+        # 2. MongoDB数据质量检查（优化版 - 使用聚合管道一次性获取所有统计）
         try:
             mongo_db = get_mongo_db()
 
-            # 检查ais_tracks集合
-            ais_total = mongo_db.ais_tracks.count_documents({})
-            ais_null_lng = mongo_db.ais_tracks.count_documents({"longitude": None})
-            ais_null_lat = mongo_db.ais_tracks.count_documents({"latitude": None})
-            ais_invalid_lng = mongo_db.ais_tracks.count_documents({
-                "$or": [
-                    {"longitude": {"$lt": -180}},
-                    {"longitude": {"$gt": 180}}
-                ]
-            })
-            ais_invalid_lat = mongo_db.ais_tracks.count_documents({
-                "$or": [
-                    {"latitude": {"$lt": -90}},
-                    {"latitude": {"$gt": 90}}
-                ]
-            })
+            # 使用聚合管道一次性获取所有统计数据，避免多次全表扫描
+            ais_stats_pipeline = [
+                {
+                    "$facet": {
+                        "total": [{"$count": "count"}],
+                        "null_lng": [
+                            {"$match": {"longitude": None}},
+                            {"$count": "count"}
+                        ],
+                        "null_lat": [
+                            {"$match": {"latitude": None}},
+                            {"$count": "count"}
+                        ],
+                        "invalid_lng": [
+                            {"$match": {
+                                "$or": [
+                                    {"longitude": {"$lt": -180}},
+                                    {"longitude": {"$gt": 180}}
+                                ]
+                            }},
+                            {"$count": "count"}
+                        ],
+                        "invalid_lat": [
+                            {"$match": {
+                                "$or": [
+                                    {"latitude": {"$lt": -90}},
+                                    {"latitude": {"$gt": 90}}
+                                ]
+                            }},
+                            {"$count": "count"}
+                        ]
+                    }
+                }
+            ]
+
+            # 执行聚合查询（只扫描一次）
+            ais_stats_result = list(mongo_db.ais_tracks.aggregate(ais_stats_pipeline))
+
+            if ais_stats_result:
+                stats = ais_stats_result[0]
+                ais_total = stats['total'][0]['count'] if stats['total'] else 0
+                ais_null_lng = stats['null_lng'][0]['count'] if stats['null_lng'] else 0
+                ais_null_lat = stats['null_lat'][0]['count'] if stats['null_lat'] else 0
+                ais_invalid_lng = stats['invalid_lng'][0]['count'] if stats['invalid_lng'] else 0
+                ais_invalid_lat = stats['invalid_lat'][0]['count'] if stats['invalid_lat'] else 0
+            else:
+                ais_total = 0
+                ais_null_lng = 0
+                ais_null_lat = 0
+                ais_invalid_lng = 0
+                ais_invalid_lat = 0
 
             ais_null_rate = (ais_null_lng + ais_null_lat) / (ais_total * 2) * 100 if ais_total > 0 else 0
             ais_invalid_rate = (ais_invalid_lng + ais_invalid_lat) / (ais_total * 2) * 100 if ais_total > 0 else 0
@@ -105,8 +140,12 @@ async def get_quality_metrics():
             # MongoDB整体质量分
             mongo_quality_score = ais_score
 
+            print(f"✅ MongoDB质量检查完成 - 总记录: {ais_total:,}, 空值率: {ais_null_rate:.2f}%, 无效率: {ais_invalid_rate:.2f}%")
+
         except Exception as e:
-            print(f"MongoDB质量检查失败: {e}")
+            print(f"⚠️ MongoDB质量检查失败: {e}")
+            import traceback
+            traceback.print_exc()
             mongo_quality_score = 0
             ais_total = 0
             ais_null_rate = 0
@@ -259,18 +298,41 @@ async def get_quality_rules():
                 "violations": time_check['violations']
             })
 
-        # 规则4: 经纬度合法性（MongoDB）
+        # 规则4: 经纬度合法性（MongoDB - 优化版）
         try:
             mongo_db = get_mongo_db()
-            total_tracks = mongo_db.ais_tracks.count_documents({})
-            invalid_coords = mongo_db.ais_tracks.count_documents({
-                "$or": [
-                    {"longitude": {"$lt": -180}},
-                    {"longitude": {"$gt": 180}},
-                    {"latitude": {"$lt": -90}},
-                    {"latitude": {"$gt": 90}}
-                ]
-            })
+
+            # 使用聚合管道一次性获取统计数据
+            coord_stats_pipeline = [
+                {
+                    "$facet": {
+                        "total": [{"$count": "count"}],
+                        "invalid": [
+                            {
+                                "$match": {
+                                    "$or": [
+                                        {"longitude": {"$lt": -180}},
+                                        {"longitude": {"$gt": 180}},
+                                        {"latitude": {"$lt": -90}},
+                                        {"latitude": {"$gt": 90}}
+                                    ]
+                                }
+                            },
+                            {"$count": "count"}
+                        ]
+                    }
+                }
+            ]
+
+            coord_stats_result = list(mongo_db.ais_tracks.aggregate(coord_stats_pipeline))
+
+            if coord_stats_result:
+                stats = coord_stats_result[0]
+                total_tracks = stats['total'][0]['count'] if stats['total'] else 0
+                invalid_coords = stats['invalid'][0]['count'] if stats['invalid'] else 0
+            else:
+                total_tracks = 0
+                invalid_coords = 0
 
             rules.append({
                 "name": "经纬度合法性",
@@ -280,7 +342,7 @@ async def get_quality_rules():
                 "violations": invalid_coords
             })
         except Exception as e:
-            print(f"MongoDB规则检查失败: {e}")
+            print(f"⚠️ MongoDB规则检查失败: {e}")
 
         return JSONResponse({
             "success": True,

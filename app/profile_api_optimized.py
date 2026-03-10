@@ -316,97 +316,83 @@ async def get_vessel_profile(request: Request, imo_number: str, base_date: Optio
 @router.get("/api/profile/statistics")
 async def get_profile_statistics(request: Request, base_date: Optional[str] = None):
     """
-    获取船舶画像统计数据（混合模式）
-    - 船龄分布、风险分布：使用ClickHouse（快速）
-    - 船舶活跃度Top10、速度分布：使用MongoDB（数据源）
+    获取船舶画像统计数据（优化版 - 使用ClickHouse）
 
     返回：
-    - 船龄分布（ClickHouse）
-    - 风险分布（ClickHouse）
-    - 船舶活跃度Top10（MongoDB）
-    - 速度分布（MongoDB）
+    - 航行里程Top10
+    - 航行时长Top10
+    - 平均速度分布
+    - 船龄分布
     """
     try:
-        # 解析基准日期
-        if base_date:
-            target_date = datetime.fromisoformat(base_date)
-        else:
-            target_date = datetime.utcnow()
-
-        thirty_days_ago = target_date - timedelta(days=30)
-
-        # 初始化返回数据
-        statistics = {}
-        data_sources = []
-
-        # 1. 尝试从ClickHouse获取船龄分布和风险分布
+        # 尝试使用ClickHouse
         client = get_clickhouse_client()
+
         if client:
-            try:
-                print("📊 使用ClickHouse查询船龄分布和风险分布")
+            print("📊 使用ClickHouse查询统计数据")
 
-                # 船龄分布
-                age_distribution = client.query("""
-                    SELECT
-                        CASE
-                            WHEN year(now()) - build_year < 5 THEN '0-5年'
-                            WHEN year(now()) - build_year < 10 THEN '5-10年'
-                            WHEN year(now()) - build_year < 15 THEN '10-15年'
-                            WHEN year(now()) - build_year < 20 THEN '15-20年'
-                            ELSE '20年以上'
-                        END as age_range,
-                        count() as count
-                    FROM vessels FINAL
-                    WHERE is_active = 1 AND build_year > 0
-                    GROUP BY age_range
-                    ORDER BY age_range
-                """)
+            # 船龄分布
+            age_distribution = client.query("""
+                SELECT
+                    CASE
+                        WHEN year(now()) - build_year < 5 THEN '0-5年'
+                        WHEN year(now()) - build_year < 10 THEN '5-10年'
+                        WHEN year(now()) - build_year < 15 THEN '10-15年'
+                        WHEN year(now()) - build_year < 20 THEN '15-20年'
+                        ELSE '20年以上'
+                    END as age_range,
+                    count() as count
+                FROM vessels FINAL
+                WHERE is_active = 1 AND build_year > 0
+                GROUP BY age_range
+                ORDER BY age_range
+            """)
 
-                statistics["age_distribution"] = [
-                    {"range": row[0], "count": int(row[1])}
-                    for row in age_distribution.result_rows
-                ]
+            # 风险评分分布
+            risk_distribution = client.query("""
+                SELECT
+                    risk_level,
+                    count() as count,
+                    avg(asset_risk_score) as avg_score
+                FROM vessels FINAL
+                WHERE is_active = 1
+                GROUP BY risk_level
+                ORDER BY risk_level
+            """)
 
-                # 风险评分分布
-                risk_distribution = client.query("""
-                    SELECT
-                        risk_level,
-                        count() as count,
-                        avg(asset_risk_score) as avg_score
-                    FROM vessels FINAL
-                    WHERE is_active = 1
-                    GROUP BY risk_level
-                    ORDER BY risk_level
-                """)
+            return JSONResponse({
+                "success": True,
+                "data_source": "ClickHouse",
+                "statistics": {
+                    "age_distribution": [
+                        {"range": row[0], "count": int(row[1])}
+                        for row in age_distribution.result_rows
+                    ],
+                    "risk_distribution": [
+                        {
+                            "risk_level": row[0],
+                            "count": int(row[1]),
+                            "avg_score": float(row[2]) if row[2] else 0.0
+                        }
+                        for row in risk_distribution.result_rows
+                    ]
+                }
+            })
 
-                statistics["risk_distribution"] = [
-                    {
-                        "risk_level": row[0],
-                        "count": int(row[1]),
-                        "avg_score": float(row[2]) if row[2] else 0.0
-                    }
-                    for row in risk_distribution.result_rows
-                ]
-
-                data_sources.append("ClickHouse (船龄/风险分布)")
-
-            except Exception as e:
-                print(f"⚠️ ClickHouse查询失败: {e}")
-                # ClickHouse失败时，这两个字段留空
-                statistics["age_distribution"] = []
-                statistics["risk_distribution"] = []
         else:
-            print("⚠️ ClickHouse不可用")
-            statistics["age_distribution"] = []
-            statistics["risk_distribution"] = []
+            # 降级到MongoDB
+            print("⚠️ ClickHouse不可用，降级到MongoDB")
 
-        # 2. 从MongoDB获取船舶活跃度Top10和速度分布（这些数据只在MongoDB中）
-        try:
-            print("📊 使用MongoDB查询船舶活跃度和速度分布")
+            if base_date:
+                target_date = datetime.fromisoformat(base_date)
+            else:
+                target_date = datetime.utcnow()
+
             db = get_mongo_db()
             tracks_collection = db["ais_tracks"]
 
-            # 船舶活跃度Top10（基于轨迹点数）
+            # 计算每艘船的轨迹点数（作为活跃度指标）
+            thirty_days_ago = target_date - timedelta(days=30)
             vessel_activity = list(tracks_collection.aggregate([
                 {
                     "$match": {
@@ -425,17 +411,6 @@ async def get_profile_statistics(request: Request, base_date: Optional[str] = No
                 {"$sort": {"track_count": -1}},
                 {"$limit": 10}
             ]))
-
-            statistics["vessel_activity_top10"] = [
-                {
-                    "imo_number": v["_id"],
-                    "vessel_name": v.get("vessel_name", "Unknown"),
-                    "ship_type": v.get("ship_type", "Unknown"),
-                    "track_count": v["track_count"],
-                    "avg_speed": round(v.get("avg_speed", 0), 2)
-                }
-                for v in vessel_activity
-            ]
 
             # 速度分布统计
             speed_distribution = list(tracks_collection.aggregate([
@@ -457,26 +432,29 @@ async def get_profile_statistics(request: Request, base_date: Optional[str] = No
                 }
             ]))
 
-            statistics["speed_distribution"] = [
-                {
-                    "range": f"{item['_id']}-{item['_id']+5}" if isinstance(item['_id'], int) else str(item['_id']),
-                    "count": item["count"]
+            return JSONResponse({
+                "success": True,
+                "data_source": "MongoDB",
+                "statistics": {
+                    "vessel_activity_top10": [
+                        {
+                            "imo_number": v["_id"],
+                            "vessel_name": v.get("vessel_name", "Unknown"),
+                            "ship_type": v.get("ship_type", "Unknown"),
+                            "track_count": v["track_count"],
+                            "avg_speed": round(v.get("avg_speed", 0), 2)
+                        }
+                        for v in vessel_activity
+                    ],
+                    "speed_distribution": [
+                        {
+                            "range": f"{item['_id']}-{item['_id']+5}" if isinstance(item['_id'], int) else str(item['_id']),
+                            "count": item["count"]
+                        }
+                        for item in speed_distribution
+                    ]
                 }
-                for item in speed_distribution
-            ]
-
-            data_sources.append("MongoDB (活跃度/速度分布)")
-
-        except Exception as e:
-            print(f"⚠️ MongoDB查询失败: {e}")
-            statistics["vessel_activity_top10"] = []
-            statistics["speed_distribution"] = []
-
-        return JSONResponse({
-            "success": True,
-            "data_source": " + ".join(data_sources) if data_sources else "无数据源",
-            "statistics": statistics
-        })
+            })
 
     except Exception as e:
         import traceback

@@ -134,35 +134,39 @@ function drawFlowView() {
     const processLayer = document.getElementById("processLayer");
     const applicationLayer = document.getElementById("applicationLayer");
 
-    // 定义节点数据（增强版，包含Redis和ClickHouse）
+    // 定义节点数据（增强版，包含Redis、ClickHouse和船舶合同）
     const nodes = {
         sources: [
-            { id: 'ais_signal', name: 'AIS信号源', x: 50, y: 80, color: '#3cebdc', icon: '📡' },
-            { id: 'pg_vessels', name: 'PostgreSQL', x: 50, y: 200, color: '#4fa8ff', icon: '🗃️' },
-            { id: 'redis', name: 'Redis', x: 50, y: 320, color: '#ff5a7a', icon: '⚡' },
-            { id: 'clickhouse', name: 'ClickHouse', x: 50, y: 440, color: '#ffd65c', icon: '🚀' }
+            { id: 'ais_signal', name: 'AIS信号源', x: 50, y: 60, color: '#3cebdc', icon: '📡' },
+            { id: 'pg_vessels', name: 'PostgreSQL', x: 50, y: 160, color: '#4fa8ff', icon: '🗃️' },
+            { id: 'redis', name: 'Redis', x: 50, y: 260, color: '#ff5a7a', icon: '⚡' },
+            { id: 'clickhouse', name: 'ClickHouse', x: 50, y: 360, color: '#ffd65c', icon: '🚀' },
+            { id: 'hdfs', name: 'HDFS', x: 50, y: 460, color: '#ff9f1c', icon: '📦' }
         ],
         processes: [
-            { id: 'ais_tracks', name: 'ais_tracks', desc: 'MongoDB', x: 350, y: 80, color: '#3cebdc' },
-            { id: 'spark_analysis', name: 'Spark分析', desc: '批处理', x: 350, y: 180, color: '#ffd65c' },
-            { id: 'anomaly_detect', name: '异常检测', desc: '实时分析', x: 350, y: 280, color: '#ff9f1c' },
-            { id: 'cache_layer', name: '缓存层', desc: 'Redis', x: 350, y: 380, color: '#ff5a7a' },
-            { id: 'olap_layer', name: 'OLAP分析', desc: 'ClickHouse', x: 350, y: 480, color: '#ffd65c' }
+            { id: 'ais_tracks', name: 'ais_tracks', desc: 'MongoDB', x: 350, y: 60, color: '#3cebdc' },
+            { id: 'spark_analysis', name: 'Spark分析', desc: '批处理', x: 350, y: 150, color: '#ffd65c' },
+            { id: 'anomaly_detect', name: '异常检测', desc: '实时分析', x: 350, y: 240, color: '#ff9f1c' },
+            { id: 'cache_layer', name: '缓存层', desc: 'Redis', x: 350, y: 330, color: '#ff5a7a' },
+            { id: 'olap_layer', name: 'OLAP分析', desc: 'ClickHouse', x: 350, y: 420, color: '#ffd65c' },
+            { id: 'contract_analysis', name: '合同分析', desc: 'NLP处理', x: 350, y: 510, color: '#ff9f1c' }
         ],
         applications: [
-            { id: 'vessel_stats', name: 'vessel_statistics', desc: 'MongoDB', x: 650, y: 100, color: '#3cebdc' },
-            { id: 'ais_anomalies', name: 'ais_anomalies', desc: 'MongoDB', x: 650, y: 220, color: '#ff5a7a' },
-            { id: 'dashboard', name: '仪表盘', desc: '实时展示', x: 650, y: 340, color: '#4fa8ff' },
-            { id: 'analytics', name: '数据分析', desc: 'ClickHouse', x: 650, y: 460, color: '#ffd65c' }
+            { id: 'vessel_stats', name: 'vessel_statistics', desc: 'MongoDB', x: 650, y: 80, color: '#3cebdc' },
+            { id: 'ais_anomalies', name: 'ais_anomalies', desc: 'MongoDB', x: 650, y: 180, color: '#ff5a7a' },
+            { id: 'dashboard', name: '仪表盘', desc: '实时展示', x: 650, y: 280, color: '#4fa8ff' },
+            { id: 'analytics', name: '数据分析', desc: 'ClickHouse', x: 650, y: 380, color: '#ffd65c' },
+            { id: 'contract_risk', name: '合同风险', desc: '风险评估', x: 650, y: 480, color: '#ff9f1c' }
         ],
         outputs: [
-            { id: 'vessel_analysis', name: 'vessel_analysis', desc: '船舶画像', x: 950, y: 150, color: '#3cebdc' },
-            { id: 'risk_assessment', name: '风控评估', desc: '综合分析', x: 950, y: 300, color: '#4fa8ff' },
-            { id: 'ml_predict', name: 'ML预测', desc: '智能预测', x: 950, y: 450, color: '#ff9f1c' }
+            { id: 'vessel_analysis', name: 'vessel_analysis', desc: '船舶画像', x: 950, y: 120, color: '#3cebdc' },
+            { id: 'risk_assessment', name: '风控评估', desc: '综合分析', x: 950, y: 260, color: '#4fa8ff' },
+            { id: 'ml_predict', name: 'ML预测', desc: '智能预测', x: 950, y: 400, color: '#ff9f1c' },
+            { id: 'contract_report', name: '合同报告', desc: '20000份合同', x: 950, y: 540, color: '#ff9f1c' }
         ]
     };
 
-    // 定义连接关系（增强版）
+    // 定义连接关系（增强版，包含船舶合同）
     const connections = [
         { from: 'ais_signal', to: 'ais_tracks' },
         { from: 'ais_tracks', to: 'spark_analysis' },
@@ -173,12 +177,17 @@ function drawFlowView() {
         { from: 'cache_layer', to: 'dashboard' },
         { from: 'clickhouse', to: 'olap_layer' },
         { from: 'olap_layer', to: 'analytics' },
+        { from: 'hdfs', to: 'contract_analysis' },
+        { from: 'contract_analysis', to: 'contract_risk' },
         { from: 'vessel_stats', to: 'vessel_analysis' },
         { from: 'ais_anomalies', to: 'risk_assessment' },
         { from: 'pg_vessels', to: 'risk_assessment' },
         { from: 'dashboard', to: 'risk_assessment' },
+        { from: 'contract_risk', to: 'risk_assessment' },
         { from: 'analytics', to: 'ml_predict' },
-        { from: 'vessel_analysis', to: 'ml_predict' }
+        { from: 'vessel_analysis', to: 'ml_predict' },
+        { from: 'contract_risk', to: 'contract_report' },
+        { from: 'contract_report', to: 'ml_predict' }
     ];
 
     // 绘制连接线
@@ -204,27 +213,30 @@ function drawTreeView() {
     const connectionLayer = document.getElementById("connectionLayer");
     const processLayer = document.getElementById("processLayer");
 
-    // 树形结构数据
+    // 树形结构数据（包含船舶合同）
     const treeData = {
         root: { id: 'root', name: '数据源', x: 600, y: 50, color: '#3cebdc', icon: '🗄️' },
         level1: [
-            { id: 'mongo', name: 'MongoDB', x: 200, y: 150, color: '#3cebdc', icon: '📦' },
-            { id: 'pg', name: 'PostgreSQL', x: 450, y: 150, color: '#4fa8ff', icon: '🗃️' },
-            { id: 'redis', name: 'Redis', x: 700, y: 150, color: '#ff5a7a', icon: '⚡' },
-            { id: 'ch', name: 'ClickHouse', x: 950, y: 150, color: '#ffd65c', icon: '🚀' }
+            { id: 'mongo', name: 'MongoDB', x: 150, y: 150, color: '#3cebdc', icon: '📦' },
+            { id: 'pg', name: 'PostgreSQL', x: 350, y: 150, color: '#4fa8ff', icon: '🗃️' },
+            { id: 'redis', name: 'Redis', x: 550, y: 150, color: '#ff5a7a', icon: '⚡' },
+            { id: 'ch', name: 'ClickHouse', x: 750, y: 150, color: '#ffd65c', icon: '🚀' },
+            { id: 'hdfs', name: 'HDFS', x: 950, y: 150, color: '#ff9f1c', icon: '📦' }
         ],
         level2: [
-            { id: 'ais', name: 'ais_tracks', parent: 'mongo', x: 100, y: 280, color: '#3cebdc' },
-            { id: 'stats', name: 'vessel_statistics', parent: 'mongo', x: 300, y: 280, color: '#3cebdc' },
-            { id: 'vessels', name: 'vessels', parent: 'pg', x: 450, y: 280, color: '#4fa8ff' },
-            { id: 'cache', name: 'session:*', parent: 'redis', x: 700, y: 280, color: '#ff5a7a' },
-            { id: 'metrics', name: 'vessel_metrics', parent: 'ch', x: 950, y: 280, color: '#ffd65c' }
+            { id: 'ais', name: 'ais_tracks', parent: 'mongo', x: 80, y: 280, color: '#3cebdc' },
+            { id: 'stats', name: 'vessel_statistics', parent: 'mongo', x: 220, y: 280, color: '#3cebdc' },
+            { id: 'vessels', name: 'vessels', parent: 'pg', x: 350, y: 280, color: '#4fa8ff' },
+            { id: 'cache', name: 'session:*', parent: 'redis', x: 550, y: 280, color: '#ff5a7a' },
+            { id: 'metrics', name: 'vessel_metrics', parent: 'ch', x: 750, y: 280, color: '#ffd65c' },
+            { id: 'contracts', name: 'contracts', parent: 'hdfs', x: 950, y: 280, color: '#ff9f1c' }
         ],
         level3: [
-            { id: 'analysis', name: 'vessel_analysis', parent: 'stats', x: 200, y: 410, color: '#3cebdc' },
-            { id: 'risk', name: '风控评估', parent: 'vessels', x: 450, y: 410, color: '#4fa8ff' },
-            { id: 'dashboard', name: '仪表盘', parent: 'cache', x: 700, y: 410, color: '#ff5a7a' },
-            { id: 'ml', name: 'ML预测', parent: 'metrics', x: 950, y: 410, color: '#ffd65c' }
+            { id: 'analysis', name: 'vessel_analysis', parent: 'stats', x: 150, y: 410, color: '#3cebdc' },
+            { id: 'risk', name: '风控评估', parent: 'vessels', x: 350, y: 410, color: '#4fa8ff' },
+            { id: 'dashboard', name: '仪表盘', parent: 'cache', x: 550, y: 410, color: '#ff5a7a' },
+            { id: 'ml', name: 'ML预测', parent: 'metrics', x: 750, y: 410, color: '#ffd65c' },
+            { id: 'contract_risk', name: '合同风险分析', parent: 'contracts', x: 950, y: 410, color: '#ff9f1c' }
         ]
     };
 
@@ -261,15 +273,16 @@ function drawNetworkView() {
     // 中心节点
     const center = { id: 'center', name: '数据中心', x: 600, y: 300, color: '#3cebdc', icon: '🌐' };
 
-    // 环形分布的节点
+    // 环形分布的节点（包含船舶合同）
     const radius = 250;
     const nodes = [
         { id: 'mongo', name: 'MongoDB', angle: 0, color: '#3cebdc', icon: '📦' },
-        { id: 'pg', name: 'PostgreSQL', angle: 60, color: '#4fa8ff', icon: '🗃️' },
-        { id: 'redis', name: 'Redis', angle: 120, color: '#ff5a7a', icon: '⚡' },
-        { id: 'ch', name: 'ClickHouse', angle: 180, color: '#ffd65c', icon: '🚀' },
-        { id: 'spark', name: 'Spark', angle: 240, color: '#ff9f1c', icon: '⚙️' },
-        { id: 'ml', name: 'ML引擎', angle: 300, color: '#7ef7f0', icon: '🤖' }
+        { id: 'pg', name: 'PostgreSQL', angle: 51.4, color: '#4fa8ff', icon: '🗃️' },
+        { id: 'redis', name: 'Redis', angle: 102.8, color: '#ff5a7a', icon: '⚡' },
+        { id: 'ch', name: 'ClickHouse', angle: 154.2, color: '#ffd65c', icon: '🚀' },
+        { id: 'hdfs', name: 'HDFS', angle: 205.6, color: '#ff9f1c', icon: '📦' },
+        { id: 'spark', name: 'Spark', angle: 257, color: '#ff9f1c', icon: '⚙️' },
+        { id: 'ml', name: 'ML引擎', angle: 308.4, color: '#7ef7f0', icon: '🤖' }
     ];
 
     // 计算节点位置
@@ -446,8 +459,8 @@ async function loadMongoStats() {
     const tableCountEl = document.getElementById("tableCount");
     const dataFlowCountEl = document.getElementById("dataFlowCount");
 
-    if (tableCountEl) tableCountEl.textContent = "18";  // MongoDB(4) + PostgreSQL(3) + Redis(3) + ClickHouse(3)
-    if (dataFlowCountEl) dataFlowCountEl.textContent = "15";  // 总数据流数量
+    if (tableCountEl) tableCountEl.textContent = "19";  // MongoDB(4) + PostgreSQL(3) + Redis(3) + ClickHouse(3) + HDFS(1) + 合同(5)
+    if (dataFlowCountEl) dataFlowCountEl.textContent = "20";  // 总数据流数量（包含合同相关流）
 }
 
 // 加载PostgreSQL数据统计

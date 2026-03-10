@@ -4,7 +4,7 @@
     background: radial-gradient(circle at 20% 20%, rgba(60, 235, 220, 0.08), transparent 40%),
         radial-gradient(circle at 80% 30%, rgba(79, 168, 255, 0.12), transparent 45%),
         linear-gradient(130deg, #061624 0%, #0b223d 45%, #0f2c50 100%);
-    min-height: 100vh;
+    /* 移除 min-height: 100vh，让内容自然撑开高度，避免过度滚动 */
     position: relative;
     overflow-x: hidden;
 }
@@ -34,7 +34,7 @@
 .contract-content {
     position: relative;
     z-index: 5;
-    padding: 20px 32px 80px;
+    padding: 20px 32px 40px;  /* 减少底部内边距从80px到40px */
     display: flex;
     flex-direction: column;
     gap: 24px;

@@ -44,8 +44,24 @@ def db_conn(role: str):
         raise RuntimeError("数据库连接池尚未初始化")
     conn = pool.getconn()
     try:
+        # 测试连接是否有效
+        with conn.cursor() as test_cur:
+            test_cur.execute("SELECT 1")
         yield conn
         conn.commit()
+    except psycopg2.OperationalError as e:
+        # 连接已关闭，尝试重新获取
+        print(f"⚠️ 数据库连接已关闭，尝试重新连接: {e}")
+        pool.putconn(conn, close=True)
+        conn = pool.getconn()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            pool.putconn(conn)
     except Exception:
         conn.rollback()
         raise
@@ -57,28 +73,41 @@ def init_pools() -> None:
     """初始化数据库连接池"""
     global ADMIN_POOL, READ_POOL
     _require_db()
-    base_options = f"-c search_path={settings.db_schema} -c statement_timeout=30000"
+    # 增加超时设置和连接保活参数
+    base_options = (
+        f"-c search_path={settings.db_schema} "
+        f"-c statement_timeout=60000 "  # 增加到60秒
+        f"-c idle_in_transaction_session_timeout=120000"  # 空闲事务超时2分钟
+    )
     ADMIN_POOL = SimpleConnectionPool(
-        1,
-        5,
+        2,  # 增加最小连接数
+        10,  # 增加最大连接数
         host=settings.db_host,
         port=settings.db_port,
         dbname=settings.db_name,
         user=settings.admin_user,
         password=settings.admin_password,
         options=base_options,
-        connect_timeout=5,
+        connect_timeout=10,  # 增加连接超时
+        keepalives=1,  # 启用TCP keepalive
+        keepalives_idle=30,  # 30秒后开始发送keepalive
+        keepalives_interval=10,  # 每10秒发送一次
+        keepalives_count=5,  # 最多5次失败后断开
     )
     READ_POOL = SimpleConnectionPool(
-        1,
-        5,
+        2,  # 增加最小连接数
+        10,  # 增加最大连接数
         host=settings.db_host,
         port=settings.db_port,
         dbname=settings.db_name,
         user=settings.read_user,
         password=settings.read_password,
         options=base_options,
-        connect_timeout=5,
+        connect_timeout=10,  # 增加连接超时
+        keepalives=1,  # 启用TCP keepalive
+        keepalives_idle=30,  # 30秒后开始发送keepalive
+        keepalives_interval=10,  # 每10秒发送一次
+        keepalives_count=5,  # 最多5次失败后断开
     )
 
 

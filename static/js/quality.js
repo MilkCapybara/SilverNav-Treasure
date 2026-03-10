@@ -328,16 +328,20 @@ function init() {
     updateClock();
     setInterval(updateClock, 1000);
 
+    // 首次加载质量数据
     updateQualityMetrics();
-    setInterval(updateQualityMetrics, 10000);
+    // 改为每5分钟刷新一次（从10秒改为300秒）
+    setInterval(updateQualityMetrics, 300000);  // 5分钟 = 300000ms
 
+    // 首次加载时效性数据
     updateTimelinessMonitoring();
-    setInterval(updateTimelinessMonitoring, 60000);
+    // 改为每5分钟刷新一次（从1分钟改为5分钟）
+    setInterval(updateTimelinessMonitoring, 300000);  // 5分钟
 
     setupSuggestionButtons();
     animateDataFlow();
 
-    console.log('数据质量监控初始化完成');
+    console.log('数据质量监控初始化完成 - 刷新间隔: 5分钟');
 }
 
 // 页面加载完成后初始化
